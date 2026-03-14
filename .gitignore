@@ -1,4 +1,7 @@
-docs/
+docs/*
+!docs/source/
+docs/source/*
+!docs/source/*.csv
 node_modules/
 .env
 *.log

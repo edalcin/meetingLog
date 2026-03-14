@@ -1,0 +1,36 @@
+[x-cloak] { display: none !important; }
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Table cell truncation */
+td .truncate {
+  max-width: 200px;
+}
+
+@media (min-width: 768px) {
+  td .truncate {
+    max-width: 300px;
+  }
+}

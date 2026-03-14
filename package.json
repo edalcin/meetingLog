@@ -1,0 +1,19 @@
+{
+  "name": "meetinglog",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node src/migrate.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "mysql2": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

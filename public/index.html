@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro de Reuniões</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1e40af" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Reuniões" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+  <div x-data="app()" x-init="init()">
+
+    <!-- PIN Screen -->
+    <div x-show="!authenticated" x-cloak
+         class="min-h-screen flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+        <div class="text-center mb-8">
+          <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900">Registro de Reuniões</h1>
+          <p class="text-gray-500 mt-1 text-sm">Digite o PIN de acesso</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <input
+              x-model="pinInput"
+              type="password"
+              inputmode="numeric"
+              maxlength="20"
+              placeholder="PIN"
+              class="w-full px-4 py-3 border-2 rounded-xl text-center text-2xl tracking-widest focus:outline-none focus:border-blue-500 transition-colors"
+              :class="pinError ? 'border-red-400' : 'border-gray-200'"
+              @keydown.enter="verifyPin()"
+            />
+            <p x-show="pinError" class="text-red-500 text-sm mt-2 text-center">PIN incorreto. Tente novamente.</p>
+          </div>
+          <button
+            @click="verifyPin()"
+            :disabled="pinLoading"
+            class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors">
+            <span x-show="!pinLoading">Entrar</span>
+            <span x-show="pinLoading">Verificando...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div x-show="authenticated" x-cloak>
+
+      <!-- Header -->
+      <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <span class="font-semibold text-gray-900 text-lg">Reuniões</span>
+            </div>
+            <button
+              @click="openForm()"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Nova Reunião
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-col sm:flex-row gap-3">
+          <div class="flex-1 relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input
+              x-model="filter"
+              type="text"
+              placeholder="Filtrar por projeto ou participantes..."
+              class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+            />
+          </div>
+          <div class="text-sm text-gray-500 flex items-center">
+            <span x-text="total + ' reuniões'"></span>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50">
+                  <th class="px-4 py-3 text-left">
+                    <button @click="setSort('data_hora')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors">
+                      Data/Hora
+                      <span x-show="sortCol === 'data_hora'" x-text="sortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 text-left">
+                    <button @click="setSort('tipo')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors">
+                      Tipo
+                      <span x-show="sortCol === 'tipo'" x-text="sortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 text-left">
+                    <button @click="setSort('participantes')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors">
+                      Participantes
+                      <span x-show="sortCol === 'participantes'" x-text="sortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 text-left">
+                    <button @click="setSort('projeto')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors">
+                      Projeto
+                      <span x-show="sortCol === 'projeto'" x-text="sortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <!-- Loading -->
+                <tr x-show="loading">
+                  <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                    <div class="flex items-center justify-center gap-2">
+                      <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      Carregando...
+                    </div>
+                  </td>
+                </tr>
+                <!-- Empty -->
+                <tr x-show="!loading && meetings.length === 0">
+                  <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                    Nenhuma reunião encontrada.
+                  </td>
+                </tr>
+                <!-- Rows -->
+                <template x-for="m in meetings" :key="m.id">
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3 text-gray-900 whitespace-nowrap" x-text="formatDate(m.data_hora)"></td>
+                    <td class="px-4 py-3">
+                      <span :class="m.tipo === 'Presencial' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                            x-text="m.tipo"></span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-600 max-w-xs">
+                      <div class="truncate" :title="m.participantes" x-text="m.participantes"></div>
+                    </td>
+                    <td class="px-4 py-3 text-gray-600 max-w-xs">
+                      <div class="truncate" :title="m.projeto" x-text="m.projeto"></div>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <button @click="editMeeting(m)" class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded" title="Editar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div x-show="totalPages > 1" class="border-t border-gray-200 px-4 py-3 flex items-center justify-between">
+            <span class="text-sm text-gray-500">
+              Página <span x-text="currentPage"></span> de <span x-text="totalPages"></span>
+            </span>
+            <div class="flex gap-2">
+              <button
+                @click="goPage(currentPage - 1)"
+                :disabled="currentPage <= 1"
+                class="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors">
+                Anterior
+              </button>
+              <button
+                @click="goPage(currentPage + 1)"
+                :disabled="currentPage >= totalPages"
+                class="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors">
+                Próxima
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Meeting Form Modal -->
+      <div x-show="showForm" x-cloak
+           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4"
+           @click.self="cancelForm()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900"
+                x-text="editingId ? 'Editar Reunião' : 'Nova Reunião'"></h2>
+            <button @click="cancelForm()" class="text-gray-400 hover:text-gray-600 p-1">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form @submit.prevent="saveMeeting()" class="px-6 py-4 space-y-4">
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Data <span class="text-red-500">*</span></label>
+                <input x-model="formData.data" type="date"
+                       class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                       :class="formErrors.data_hora ? 'border-red-400' : 'border-gray-200'" />
+                <p x-show="formErrors.data_hora" class="text-red-500 text-xs mt-1" x-text="formErrors.data_hora"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-red-500">*</span></label>
+                <input x-model="formData.hora" type="time"
+                       class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                       :class="formErrors.data_hora ? 'border-red-400' : 'border-gray-200'" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tipo <span class="text-red-500">*</span></label>
+              <select x-model="formData.tipo"
+                      class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                      :class="formErrors.tipo ? 'border-red-400' : 'border-gray-200'">
+                <option value="">Selecione...</option>
+                <option value="Remota">Remota</option>
+                <option value="Presencial">Presencial</option>
+              </select>
+              <p x-show="formErrors.tipo" class="text-red-500 text-xs mt-1" x-text="formErrors.tipo"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Participantes <span class="text-red-500">*</span></label>
+              <textarea x-model="formData.participantes" rows="3"
+                        placeholder="Nome1, Nome2, Nome3..."
+                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors resize-none"
+                        :class="formErrors.participantes ? 'border-red-400' : 'border-gray-200'"></textarea>
+              <p x-show="formErrors.participantes" class="text-red-500 text-xs mt-1" x-text="formErrors.participantes"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Projeto <span class="text-red-500">*</span></label>
+              <input x-model="formData.projeto" type="text"
+                     placeholder="Nome do projeto"
+                     class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                     :class="formErrors.projeto ? 'border-red-400' : 'border-gray-200'" />
+              <p x-show="formErrors.projeto" class="text-red-500 text-xs mt-1" x-text="formErrors.projeto"></p>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="button" @click="cancelForm()"
+                      class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                Cancelar
+              </button>
+              <button type="submit" :disabled="formLoading"
+                      class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                <span x-show="!formLoading" x-text="editingId ? 'Salvar' : 'Registrar'"></span>
+                <span x-show="formLoading">Salvando...</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+      <!-- Toast notification -->
+      <div x-show="toast.show" x-cloak x-transition
+           class="fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium"
+           :class="toast.error ? 'bg-red-600' : 'bg-green-600'"
+           x-text="toast.message">
+      </div>
+
+    </div><!-- /authenticated -->
+  </div><!-- /app() -->
+
+  <script src="/assets/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+  </script>
+</body>
+</html>

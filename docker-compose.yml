@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-reunioes}
+      - DB_USER=${DB_USER:-your-db-user}
+      - DB_PASSWORD=${DB_PASSWORD:-your-db-password}
+      - APP_PIN=${APP_PIN:-1234}
+      - APP_PORT=${APP_PORT:-3000}
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: mariadb:11
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=${DB_NAME:-reunioes}
+      - MYSQL_USER=${DB_USER:-your-db-user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-your-db-password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  db_data:

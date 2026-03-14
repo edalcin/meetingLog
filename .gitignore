@@ -1,7 +1,4 @@
-docs/*
-!docs/source/
-docs/source/*
-!docs/source/*.csv
+docs/
 node_modules/
 .env
 *.log
@@ -13,3 +10,5 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+.claude/settings.local.json
+.claude/settings*.json

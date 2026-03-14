@@ -4,7 +4,7 @@ node_modules
 .env.*
 !.env.example
 *.log
-docs/source/*.xlsx
+docs/
 specs
 .specify
 .claude

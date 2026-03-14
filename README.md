@@ -39,25 +39,3 @@ Acesse: `http://localhost:3000`
 | `APP_PIN` | Sim | — | PIN de acesso |
 | `APP_PORT` | Não | `3000` | Porta HTTP do container |
 
-## Desenvolvimento Local
-
-```bash
-cp .env.example .env
-# edite .env com suas credenciais
-
-npm install
-docker compose up -d db   # sobe apenas o MariaDB
-npm run migrate           # cria as tabelas
-node scripts/import-csv.js  # importa dados históricos
-npm run dev               # inicia servidor com hot reload
-```
-
-## Importação de Dados Históricos
-
-```bash
-node scripts/import-csv.js
-```
-
-## Instalação no UNRAID
-
-Consulte [docs/unraid-install.md](docs/unraid-install.md) para instruções detalhadas.

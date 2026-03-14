@@ -88,7 +88,7 @@ function validate(body) {
   const errors = {}
   if (!body.data_hora) errors.data_hora = 'Obrigatório'
   else if (isNaN(Date.parse(body.data_hora))) errors.data_hora = 'Data inválida'
-  if (!body.tipo || !['Presencial', 'Remota'].includes(body.tipo)) errors.tipo = 'Deve ser Presencial ou Remota'
+  if (!body.tipo || !['Presencial', 'Remota', 'Hibrida', 'Telefone'].includes(body.tipo)) errors.tipo = 'Tipo inválido'
   if (!body.participantes?.trim()) errors.participantes = 'Obrigatório'
   if (!body.projeto?.trim()) errors.projeto = 'Obrigatório'
   else if (body.projeto.length > 255) errors.projeto = 'Máximo 255 caracteres'

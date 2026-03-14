@@ -59,7 +59,7 @@ for await (const line of rl) {
     errors++
     continue
   }
-  if (!['Presencial', 'Remota'].includes(tipo)) {
+  if (!['Presencial', 'Remota', 'Hibrida', 'Telefone'].includes(tipo)) {
     console.warn(`[import] Line ${lineNum}: invalid tipo '${tipo}', skipping`)
     errors++
     continue

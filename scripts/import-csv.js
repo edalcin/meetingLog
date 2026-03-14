@@ -12,12 +12,18 @@ if (!process.env.DB_HOST) {
   config?.()
 }
 
+if (!process.env.DB_HOST || !process.env.DB_PASSWORD) {
+  console.error('[import] ERROR: DB_HOST and DB_PASSWORD environment variables are required.')
+  console.error('[import] Copy .env.example to .env and fill in your credentials.')
+  process.exit(1)
+}
+
 const conn = await mysql.createConnection({
-  host: process.env.DB_HOST ?? 'your-mariadb-host',
+  host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT ?? 3306),
-  database: process.env.DB_NAME ?? 'reunioes',
-  user: process.env.DB_USER ?? 'your-db-user',
-  password: process.env.DB_PASSWORD ?? 'your-db-password',
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   charset: 'utf8mb4'
 })
 

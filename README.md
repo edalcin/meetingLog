@@ -18,10 +18,10 @@ docker run -d \
   -p 3000:3000 \
   -e DB_HOST=your-mariadb-host \
   -e DB_PORT=3306 \
-  -e DB_NAME=reunioes \
+  -e DB_NAME=your-database-name \
   -e DB_USER=your-db-user \
   -e DB_PASSWORD=your-db-password \
-  -e APP_PIN=1234 \
+  -e APP_PIN=your-pin \
   ghcr.io/edalcin/meetinglog:latest
 ```
 

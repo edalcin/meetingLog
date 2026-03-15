@@ -21,19 +21,32 @@ function app() {
     showForm: false,
     editingId: null,
     formLoading: false,
-    formData: { data: '', hora: '', tipo: '', participantes: '', projeto: '' },
+    formData: { data: '', hora: '', tipo: '', projeto: '' },
     formErrors: {},
+
+    // Participants multi-select
+    allParticipants: [],
+    selectedParticipantIds: new Set(),
+    participantSearch: '',
+    showParticipantDropdown: false,
+
+    get filteredParticipants() {
+      const q = this.participantSearch.toLowerCase()
+      if (!q) return this.allParticipants
+      return this.allParticipants.filter(p =>
+        p.nome.toLowerCase().includes(q) ||
+        (p.instituicao && p.instituicao.toLowerCase().includes(q))
+      )
+    },
 
     // Toast
     toast: { show: false, message: '', error: false },
 
     init() {
-      // Check sessionStorage for PIN auth
       if (sessionStorage.getItem('pin_ok') === '1') {
         this.authenticated = true
         this.loadMeetings()
       }
-      // Setup debounced filter
       this.$watch('filter', () => {
         clearTimeout(this.filterTimer)
         this.filterTimer = setTimeout(() => {
@@ -92,6 +105,36 @@ function app() {
       }
     },
 
+    async loadParticipants() {
+      if (this.allParticipants.length > 0) return
+      try {
+        const res = await fetch('/api/participants?limit=500')
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        this.allParticipants = data.data
+      } catch {
+        this.showToast('Erro ao carregar participantes', true)
+      }
+    },
+
+    toggleParticipant(id) {
+      const newSet = new Set(this.selectedParticipantIds)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      this.selectedParticipantIds = newSet
+    },
+
+    isSelected(id) {
+      return this.selectedParticipantIds.has(id)
+    },
+
+    getSelectedParticipants() {
+      return this.allParticipants.filter(p => this.selectedParticipantIds.has(p.id))
+    },
+
     setSort(col) {
       if (this.sortCol === col) {
         this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
@@ -118,45 +161,53 @@ function app() {
       })
     },
 
-    openForm() {
+    async openForm() {
       this.editingId = null
-      this.formData = { data: '', hora: '', tipo: '', participantes: '', projeto: '' }
+      this.formData = { data: '', hora: '', tipo: '', projeto: '' }
       this.formErrors = {}
+      this.selectedParticipantIds = new Set()
+      this.participantSearch = ''
+      this.showParticipantDropdown = false
       this.showForm = true
+      await this.loadParticipants()
     },
 
     async editMeeting(m) {
       this.editingId = m.id
-      // Parse data_hora from ISO string
       const dt = new Date(m.data_hora)
       const pad = n => String(n).padStart(2, '0')
       this.formData = {
         data: `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`,
         hora: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
         tipo: m.tipo,
-        participantes: m.participantes,
         projeto: m.projeto
       }
       this.formErrors = {}
+      this.participantSearch = ''
+      this.showParticipantDropdown = false
       this.showForm = true
+      await this.loadParticipants()
+      this.selectedParticipantIds = new Set(m.participante_ids || [])
     },
 
     cancelForm() {
       this.showForm = false
       this.editingId = null
       this.formErrors = {}
+      this.selectedParticipantIds = new Set()
+      this.participantSearch = ''
+      this.showParticipantDropdown = false
     },
 
     async saveMeeting() {
       this.formErrors = {}
-      // Build payload
       const data_hora = this.formData.data && this.formData.hora
         ? `${this.formData.data}T${this.formData.hora}:00`
         : null
       const payload = {
         data_hora,
         tipo: this.formData.tipo,
-        participantes: this.formData.participantes,
+        participante_ids: Array.from(this.selectedParticipantIds),
         projeto: this.formData.projeto
       }
 

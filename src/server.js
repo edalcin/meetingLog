@@ -5,6 +5,7 @@ import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import meetingsRouter from './routes/meetings.js'
+import participantsRouter from './routes/participants.js'
 import pool from './db.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -29,6 +30,9 @@ app.post('/api/auth/check', async (c) => {
 
 // Meetings API
 app.route('/api/meetings', meetingsRouter)
+
+// Participants API
+app.route('/api/participants', participantsRouter)
 
 // Serve static files
 app.use('/*', serveStatic({ root: './public' }))

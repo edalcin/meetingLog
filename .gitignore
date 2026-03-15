@@ -1,4 +1,5 @@
 docs/
+docs/source/scripts/
 node_modules/
 .env
 *.log

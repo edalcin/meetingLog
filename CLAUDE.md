@@ -1,12 +1,14 @@
-# meetingLog Development Guidelines
+﻿# meetingLog Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-14
+Auto-generated from all feature plans. Last updated: 2026-03-15
 
 ## Project Overview
 
 Meeting log web application. Single Node.js (Hono) container serving REST API + Alpine.js frontend, backed by an external MariaDB instance. Deployed on UNRAID via Docker.
 
 ## Active Technologies
+- Node.js 22, ES modules + Hono (web framework), mysql2/promise (MariaDB driver), Alpine.js CDN, Tailwind CSS CDN (002-add-participantes)
+- MariaDB — tabelas `participante`, `reuniao_participante`; remoção de `reuniao.participantes` TEXT (002-add-participantes)
 
 - Node.js 22 + Hono (web framework) — main feature
 - mysql2 (MariaDB driver)
@@ -46,6 +48,7 @@ docker build .       # Build Docker image
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `APP_PIN`, `APP_PORT` (default 3000)
 
 ## Recent Changes
+- 002-add-participantes: Added Node.js 22, ES modules + Hono (web framework), mysql2/promise (MariaDB driver), Alpine.js CDN, Tailwind CSS CDN
 
 - 2026-03-14: Initial project spec, research, data model, and API contract created
 

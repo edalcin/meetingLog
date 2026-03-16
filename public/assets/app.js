@@ -131,11 +131,15 @@ function app() {
         this.toggleParticipant(exact.id)
         this.participantSearch = ''
         this.showParticipantDropdown = false
-        return
-      }
-      if (this.filteredParticipants.length === 0) {
+      } else {
         await this.createAndSelectParticipant(q)
       }
+    },
+
+    selectFromDropdown(id) {
+      this.toggleParticipant(id)
+      this.participantSearch = ''
+      this.showParticipantDropdown = false
     },
 
     async createAndSelectParticipant(nome) {

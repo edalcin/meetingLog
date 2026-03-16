@@ -44,6 +44,18 @@ app.get('*', (c) => {
 })
 
 const port = Number(process.env.APP_PORT ?? 3000)
-serve({ fetch: app.fetch, port }, () => {
+const server = serve({ fetch: app.fetch, port }, () => {
   console.log(`[server] Meeting Log running at http://localhost:${port}`)
 })
+
+function shutdown(signal) {
+  console.log(`[server] ${signal} received, shutting down...`)
+  server.close(async () => {
+    await pool.end()
+    console.log('[server] Shutdown complete.')
+    process.exit(0)
+  })
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT',  () => shutdown('SIGINT'))

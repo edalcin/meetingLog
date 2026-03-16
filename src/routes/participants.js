@@ -28,4 +28,22 @@ participants.get('/', async (c) => {
   return c.json({ data: rows, total })
 })
 
+// POST /api/participants
+participants.post('/', async (c) => {
+  const body = await c.req.json()
+  const nome = body.nome?.trim()
+  if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
+  if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
+
+  const [result] = await pool.query(
+    'INSERT INTO participante (nome, instituicao, cargo, email) VALUES (?, ?, ?, ?)',
+    [nome, body.instituicao?.trim() || null, body.cargo?.trim() || null, body.email?.trim() || null]
+  )
+  const [[row]] = await pool.query(
+    'SELECT id, nome, instituicao, cargo, email FROM participante WHERE id = ?',
+    [result.insertId]
+  )
+  return c.json(row, 201)
+})
+
 export default participants

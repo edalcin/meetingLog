@@ -39,6 +39,12 @@ function app() {
       )
     },
 
+    get showCreateOption() {
+      const q = this.participantSearch.trim()
+      if (!q) return false
+      return !this.allParticipants.some(p => p.nome.toLowerCase() === q.toLowerCase())
+    },
+
     // Toast
     toast: { show: false, message: '', error: false },
 
@@ -114,6 +120,40 @@ function app() {
         this.allParticipants = data.data
       } catch {
         this.showToast('Erro ao carregar participantes', true)
+      }
+    },
+
+    async handleParticipantEnter() {
+      const q = this.participantSearch.trim()
+      if (!q) return
+      const exact = this.allParticipants.find(p => p.nome.toLowerCase() === q.toLowerCase())
+      if (exact) {
+        this.toggleParticipant(exact.id)
+        this.participantSearch = ''
+        this.showParticipantDropdown = false
+        return
+      }
+      if (this.filteredParticipants.length === 0) {
+        await this.createAndSelectParticipant(q)
+      }
+    },
+
+    async createAndSelectParticipant(nome) {
+      try {
+        const res = await fetch('/api/participants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome })
+        })
+        if (!res.ok) throw new Error()
+        const p = await res.json()
+        this.allParticipants.push(p)
+        this.allParticipants.sort((a, b) => a.nome.localeCompare(b.nome))
+        this.toggleParticipant(p.id)
+        this.participantSearch = ''
+        this.showParticipantDropdown = false
+      } catch {
+        this.showToast('Erro ao criar participante', true)
       }
     },
 

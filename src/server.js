@@ -50,6 +50,7 @@ const server = serve({ fetch: app.fetch, port }, () => {
 
 function shutdown(signal) {
   console.log(`[server] ${signal} received, shutting down...`)
+  server.closeAllConnections()
   server.close(async () => {
     await pool.end()
     console.log('[server] Shutdown complete.')

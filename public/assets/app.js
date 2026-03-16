@@ -32,11 +32,12 @@ function app() {
 
     get filteredParticipants() {
       const q = this.participantSearch.toLowerCase()
-      if (!q) return this.allParticipants
-      return this.allParticipants.filter(p =>
-        p.nome.toLowerCase().includes(q) ||
-        (p.instituicao && p.instituicao.toLowerCase().includes(q))
-      )
+      return this.allParticipants.filter(p => {
+        if (this.selectedParticipantIds.has(p.id)) return false
+        if (!q) return true
+        return p.nome.toLowerCase().includes(q) ||
+          (p.instituicao && p.instituicao.toLowerCase().includes(q))
+      })
     },
 
     get showCreateOption() {

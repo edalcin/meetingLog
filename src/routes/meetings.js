@@ -7,9 +7,10 @@ const ALLOWED_SORT = ['data_hora', 'tipo', 'participantes_nomes', 'projeto_nomes
 
 // GET /api/meetings
 meetings.get('/', async (c) => {
-  const q      = c.req.query('q')      ?? ''
-  const qPart  = c.req.query('q_part') ?? ''
-  const qProj  = c.req.query('q_proj') ?? ''
+  const partIdsRaw = c.req.query('part_ids') ?? ''
+  const projIdsRaw = c.req.query('proj_ids') ?? ''
+  const partIds = partIdsRaw ? partIdsRaw.split(',').map(Number).filter(n => Number.isInteger(n) && n > 0) : []
+  const projIds = projIdsRaw ? projIdsRaw.split(',').map(Number).filter(n => Number.isInteger(n) && n > 0) : []
   const sort = ALLOWED_SORT.includes(c.req.query('sort')) ? c.req.query('sort') : 'data_hora'
   const order = c.req.query('order') === 'asc' ? 'ASC' : 'DESC'
   const page = Math.max(1, Number(c.req.query('page') ?? 1))
@@ -18,17 +19,17 @@ meetings.get('/', async (c) => {
 
   const conditions = []
   const params = []
-  if (q) {
-    conditions.push('(pr.nome LIKE ? OR p.nome LIKE ?)')
-    params.push(`%${q}%`, `%${q}%`)
+  if (partIds.length > 0) {
+    conditions.push(
+      `r.id IN (SELECT reuniao_id FROM reuniao_participante WHERE participante_id IN (${partIds.map(() => '?').join(',')}) GROUP BY reuniao_id HAVING COUNT(DISTINCT participante_id) = ?)`
+    )
+    params.push(...partIds, partIds.length)
   }
-  if (qPart) {
-    conditions.push('p.nome LIKE ?')
-    params.push(`%${qPart}%`)
-  }
-  if (qProj) {
-    conditions.push('pr.nome LIKE ?')
-    params.push(`%${qProj}%`)
+  if (projIds.length > 0) {
+    conditions.push(
+      `r.id IN (SELECT reuniao_id FROM reuniao_projeto WHERE projeto_id IN (${projIds.map(() => '?').join(',')}) GROUP BY reuniao_id HAVING COUNT(DISTINCT projeto_id) = ?)`
+    )
+    params.push(...projIds, projIds.length)
   }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 

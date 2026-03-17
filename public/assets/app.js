@@ -15,15 +15,16 @@ function app() {
     currentPage: 1,
     totalPages: 1,
     loading: false,
-    filter: '',
     sortCol: 'data_hora',
     sortOrder: 'desc',
-    filterTimer: null,
 
-    // Meetings separate filters
-    meetingPartFilter: '',
-    meetingProjFilter: '',
-    meetingFilterTimer: null,
+    // Meetings list filter multi-select
+    filterPartIds: new Set(),
+    filterPartSearch: '',
+    showFilterPartDropdown: false,
+    filterProjIds: new Set(),
+    filterProjSearch: '',
+    showFilterProjDropdown: false,
 
     // Form
     showForm: false,
@@ -34,11 +35,12 @@ function app() {
 
     // Participants list (tab)
     participantListLoading: false,
-    participantListFilter: '',
     participantListAll: [],
 
-    // Participants tab filters & sort
-    participantInstFilter: '',
+    // Participants tab filter multi-select & sort
+    filterPartListIds: new Set(),
+    filterPartListSearch: '',
+    showFilterPartListDropdown: false,
     participantSortCol: 'nome',
     participantSortOrder: 'asc',
 
@@ -50,20 +52,22 @@ function app() {
     showParticipantForm: false,
 
     get filteredParticipantList() {
-      const q = this.participantListFilter.toLowerCase()
-      const inst = this.participantInstFilter.toLowerCase()
-      let list = this.participantListAll
-      if (q || inst) {
-        list = list.filter(p => {
-          if (q && !(p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q)))) return false
-          if (inst && !(p.instituicao && p.instituicao.toLowerCase().includes(inst))) return false
-          return true
-        })
-      }
+      let list = this.filterPartListIds.size > 0
+        ? this.participantListAll.filter(p => this.filterPartListIds.has(p.id))
+        : this.participantListAll
       return [...list].sort((a, b) => {
         const av = (a[this.participantSortCol] ?? '').toString().toLowerCase()
         const bv = (b[this.participantSortCol] ?? '').toString().toLowerCase()
         return this.participantSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    },
+
+    get filteredParticipantsForListFilter() {
+      const q = this.filterPartListSearch.toLowerCase()
+      return this.participantListAll.filter(p => {
+        if (this.filterPartListIds.has(p.id)) return false
+        if (!q) return true
+        return p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q))
       })
     },
 
@@ -89,12 +93,32 @@ function app() {
       return !this.allParticipants.some(p => p.nome.toLowerCase() === q.toLowerCase())
     },
 
+    get filteredParticipantsForFilter() {
+      const q = this.filterPartSearch.toLowerCase()
+      return this.allParticipants.filter(p => {
+        if (this.filterPartIds.has(p.id)) return false
+        if (!q) return true
+        return p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q))
+      })
+    },
+
+    get filteredProjectsForFilter() {
+      const q = this.filterProjSearch.toLowerCase()
+      return this.allProjects.filter(pr => {
+        if (this.filterProjIds.has(pr.id)) return false
+        if (!q) return true
+        return pr.nome.toLowerCase().includes(q) || (pr.instituicao && pr.instituicao.toLowerCase().includes(q))
+      })
+    },
+
     // Projects list (for the projects tab)
     allProjects: [],
 
-    // Projects tab filters & sort
+    // Projects tab filter multi-select & sort
     projectStatusFilter: '',
-    projectInstFilter: '',
+    filterProjListIds: new Set(),
+    filterProjListSearch: '',
+    showFilterProjListDropdown: false,
     projectSortCol: 'nome',
     projectSortOrder: 'asc',
 
@@ -106,12 +130,12 @@ function app() {
     showProjectForm: false,
 
     get filteredProjectList() {
-      const inst = this.projectInstFilter.toLowerCase()
       const status = this.projectStatusFilter
-      let list = this.allProjects
-      if (inst || status) {
+      let list = this.filterProjListIds.size > 0
+        ? this.allProjects.filter(p => this.filterProjListIds.has(p.id))
+        : this.allProjects
+      if (status) {
         list = list.filter(p => {
-          if (inst && !(p.instituicao && p.instituicao.toLowerCase().includes(inst))) return false
           if (status === 'ativo' && !p.ativo) return false
           if (status === 'inativo' && p.ativo) return false
           return true
@@ -127,6 +151,15 @@ function app() {
         const av = (a[col] ?? '').toString().toLowerCase()
         const bv = (b[col] ?? '').toString().toLowerCase()
         return this.projectSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    },
+
+    get filteredProjectsForListFilter() {
+      const q = this.filterProjListSearch.toLowerCase()
+      return this.allProjects.filter(pr => {
+        if (this.filterProjListIds.has(pr.id)) return false
+        if (!q) return true
+        return pr.nome.toLowerCase().includes(q) || (pr.instituicao && pr.instituicao.toLowerCase().includes(q))
       })
     },
 
@@ -155,22 +188,9 @@ function app() {
       if (sessionStorage.getItem('pin_ok') === '1') {
         this.authenticated = true
         this.loadMeetings()
+        this.loadParticipants()
+        this.loadProjects()
       }
-      this.$watch('filter', () => {
-        clearTimeout(this.filterTimer)
-        this.filterTimer = setTimeout(() => {
-          this.currentPage = 1
-          this.loadMeetings()
-        }, 300)
-      })
-      this.$watch('meetingPartFilter', () => {
-        clearTimeout(this.meetingFilterTimer)
-        this.meetingFilterTimer = setTimeout(() => { this.currentPage = 1; this.loadMeetings() }, 300)
-      })
-      this.$watch('meetingProjFilter', () => {
-        clearTimeout(this.meetingFilterTimer)
-        this.meetingFilterTimer = setTimeout(() => { this.currentPage = 1; this.loadMeetings() }, 300)
-      })
       this.$watch('activeTab', (tab) => {
         if (tab === 'projects') this.loadProjects()
         if (tab === 'participants') this.loadParticipantList()
@@ -192,6 +212,8 @@ function app() {
           sessionStorage.setItem('pin_ok', '1')
           this.authenticated = true
           this.loadMeetings()
+          this.loadParticipants()
+          this.loadProjects()
         } else {
           this.pinError = true
           this.pinInput = ''
@@ -207,9 +229,8 @@ function app() {
       this.loading = true
       try {
         const params = new URLSearchParams({
-          q: this.filter,
-          q_part: this.meetingPartFilter,
-          q_proj: this.meetingProjFilter,
+          part_ids: Array.from(this.filterPartIds).join(','),
+          proj_ids: Array.from(this.filterProjIds).join(','),
           sort: this.sortCol,
           order: this.sortOrder,
           page: this.currentPage,
@@ -243,8 +264,75 @@ function app() {
       }
     },
 
-    filterParticipantList() {
-      // computed via getter — no-op trigger for Alpine reactivity
+    // --- Meetings list filter methods ---
+    toggleFilterPart(id) {
+      const s = new Set(this.filterPartIds)
+      s.has(id) ? s.delete(id) : s.add(id)
+      this.filterPartIds = s
+      this.filterPartSearch = ''
+      this.showFilterPartDropdown = false
+      this.currentPage = 1
+      this.loadMeetings()
+    },
+
+    removeFilterPart(id) {
+      const s = new Set(this.filterPartIds)
+      s.delete(id)
+      this.filterPartIds = s
+      this.currentPage = 1
+      this.loadMeetings()
+    },
+
+    getSelectedFilterParts() {
+      return this.allParticipants.filter(p => this.filterPartIds.has(p.id))
+    },
+
+    toggleFilterProj(id) {
+      const s = new Set(this.filterProjIds)
+      s.has(id) ? s.delete(id) : s.add(id)
+      this.filterProjIds = s
+      this.filterProjSearch = ''
+      this.showFilterProjDropdown = false
+      this.currentPage = 1
+      this.loadMeetings()
+    },
+
+    removeFilterProj(id) {
+      const s = new Set(this.filterProjIds)
+      s.delete(id)
+      this.filterProjIds = s
+      this.currentPage = 1
+      this.loadMeetings()
+    },
+
+    getSelectedFilterProjs() {
+      return this.allProjects.filter(pr => this.filterProjIds.has(pr.id))
+    },
+
+    // --- Participants tab filter methods ---
+    toggleFilterPartList(id) {
+      const s = new Set(this.filterPartListIds)
+      s.has(id) ? s.delete(id) : s.add(id)
+      this.filterPartListIds = s
+      this.filterPartListSearch = ''
+      this.showFilterPartListDropdown = false
+    },
+
+    getSelectedFilterPartList() {
+      return this.participantListAll.filter(p => this.filterPartListIds.has(p.id))
+    },
+
+    // --- Projects tab filter methods ---
+    toggleFilterProjList(id) {
+      const s = new Set(this.filterProjListIds)
+      s.has(id) ? s.delete(id) : s.add(id)
+      this.filterProjListIds = s
+      this.filterProjListSearch = ''
+      this.showFilterProjListDropdown = false
+    },
+
+    getSelectedFilterProjList() {
+      return this.allProjects.filter(pr => this.filterProjListIds.has(pr.id))
     },
 
     async loadParticipants() {

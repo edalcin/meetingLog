@@ -104,7 +104,7 @@
 
 - [ ] T016 Execute `npm run migrate` — applies `006_drop_projeto_col.sql`; verify `DESCRIBE reuniao` no longer shows `projeto` column; verify app still functions correctly (projeto_nomes comes from JOIN)
 - [x] T017 [P] Run `npm test` — confirm no regressions in existing tests
-- [ ] T018 Commit and push — `git add migrations/ src/ public/ specs/003-add-projetos/ .gitignore .dockerignore && git commit && git push origin main`
+- [x] T018 Commit and push — `git add migrations/ src/ public/ specs/003-add-projetos/ .gitignore .dockerignore && git commit && git push origin main`
 
 ---
 

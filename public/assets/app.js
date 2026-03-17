@@ -20,6 +20,11 @@ function app() {
     sortOrder: 'desc',
     filterTimer: null,
 
+    // Meetings separate filters
+    meetingPartFilter: '',
+    meetingProjFilter: '',
+    meetingFilterTimer: null,
+
     // Form
     showForm: false,
     editingId: null,
@@ -32,13 +37,34 @@ function app() {
     participantListFilter: '',
     participantListAll: [],
 
+    // Participants tab filters & sort
+    participantInstFilter: '',
+    participantSortCol: 'nome',
+    participantSortOrder: 'asc',
+
+    // Participant edit modal
+    editingParticipant: null,
+    participantForm: { nome: '', instituicao: '', cargo: '', email: '' },
+    participantFormErrors: {},
+    participantFormLoading: false,
+    showParticipantForm: false,
+
     get filteredParticipantList() {
+      let list = this.participantListAll
       const q = this.participantListFilter.toLowerCase()
-      if (!q) return this.participantListAll
-      return this.participantListAll.filter(p =>
+      if (q) list = list.filter(p =>
         p.nome.toLowerCase().includes(q) ||
         (p.instituicao && p.instituicao.toLowerCase().includes(q))
       )
+      const inst = this.participantInstFilter.toLowerCase()
+      if (inst) list = list.filter(p =>
+        p.instituicao && p.instituicao.toLowerCase().includes(inst)
+      )
+      return [...list].sort((a, b) => {
+        const av = (a[this.participantSortCol] ?? '').toString().toLowerCase()
+        const bv = (b[this.participantSortCol] ?? '').toString().toLowerCase()
+        return this.participantSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
     },
 
     // Participants multi-select
@@ -65,6 +91,40 @@ function app() {
 
     // Projects list (for the projects tab)
     allProjects: [],
+
+    // Projects tab filters & sort
+    projectStatusFilter: '',
+    projectInstFilter: '',
+    projectSortCol: 'nome',
+    projectSortOrder: 'asc',
+
+    // Project edit modal
+    editingProject: null,
+    projectForm: { nome: '', ativo: true, instituicao: '' },
+    projectFormErrors: {},
+    projectFormLoading: false,
+    showProjectForm: false,
+
+    get filteredProjectList() {
+      let list = this.allProjects
+      const inst = this.projectInstFilter.toLowerCase()
+      if (inst) list = list.filter(p =>
+        p.instituicao && p.instituicao.toLowerCase().includes(inst)
+      )
+      if (this.projectStatusFilter === 'ativo') list = list.filter(p => p.ativo)
+      if (this.projectStatusFilter === 'inativo') list = list.filter(p => !p.ativo)
+      return [...list].sort((a, b) => {
+        const col = this.projectSortCol
+        if (col === 'ativo') {
+          const av = a.ativo ? 1 : 0
+          const bv = b.ativo ? 1 : 0
+          return this.projectSortOrder === 'asc' ? av - bv : bv - av
+        }
+        const av = (a[col] ?? '').toString().toLowerCase()
+        const bv = (b[col] ?? '').toString().toLowerCase()
+        return this.projectSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    },
 
     // Projects multi-select (for meeting form)
     selectedProjectIds: new Set(),
@@ -98,6 +158,14 @@ function app() {
           this.currentPage = 1
           this.loadMeetings()
         }, 300)
+      })
+      this.$watch('meetingPartFilter', () => {
+        clearTimeout(this.meetingFilterTimer)
+        this.meetingFilterTimer = setTimeout(() => { this.currentPage = 1; this.loadMeetings() }, 300)
+      })
+      this.$watch('meetingProjFilter', () => {
+        clearTimeout(this.meetingFilterTimer)
+        this.meetingFilterTimer = setTimeout(() => { this.currentPage = 1; this.loadMeetings() }, 300)
       })
       this.$watch('activeTab', (tab) => {
         if (tab === 'projects') this.loadProjects()
@@ -136,6 +204,8 @@ function app() {
       try {
         const params = new URLSearchParams({
           q: this.filter,
+          q_part: this.meetingPartFilter,
+          q_proj: this.meetingProjFilter,
           sort: this.sortCol,
           order: this.sortOrder,
           page: this.currentPage,
@@ -282,6 +352,24 @@ function app() {
       this.loadMeetings()
     },
 
+    setSortParticipant(col) {
+      if (this.participantSortCol === col) {
+        this.participantSortOrder = this.participantSortOrder === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.participantSortCol = col
+        this.participantSortOrder = 'asc'
+      }
+    },
+
+    setSortProject(col) {
+      if (this.projectSortCol === col) {
+        this.projectSortOrder = this.projectSortOrder === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.projectSortCol = col
+        this.projectSortOrder = 'asc'
+      }
+    },
+
     goPage(p) {
       if (p < 1 || p > this.totalPages) return
       this.currentPage = p
@@ -411,6 +499,47 @@ function app() {
       }
     },
 
+    openEditParticipant(p) {
+      this.editingParticipant = p.id
+      this.participantForm = { nome: p.nome, instituicao: p.instituicao ?? '', cargo: p.cargo ?? '', email: p.email ?? '' }
+      this.participantFormErrors = {}
+      this.showParticipantForm = true
+    },
+
+    cancelParticipantForm() {
+      this.showParticipantForm = false
+      this.editingParticipant = null
+      this.participantFormErrors = {}
+    },
+
+    async saveParticipant() {
+      this.participantFormErrors = {}
+      if (!this.participantForm.nome.trim()) {
+        this.participantFormErrors.nome = 'Obrigatório'
+        return
+      }
+      this.participantFormLoading = true
+      try {
+        const res = await fetch(`/api/participants/${this.editingParticipant}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.participantForm)
+        })
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
+        const idx = this.participantListAll.findIndex(p => p.id === this.editingParticipant)
+        if (idx >= 0) this.participantListAll[idx] = body
+        const idx2 = this.allParticipants.findIndex(p => p.id === this.editingParticipant)
+        if (idx2 >= 0) this.allParticipants[idx2] = body
+        this.cancelParticipantForm()
+        this.showToast('Participante atualizado!')
+      } catch {
+        this.showToast('Erro de conexão.', true)
+      } finally {
+        this.participantFormLoading = false
+      }
+    },
+
     async deleteProject(id, nome) {
       if (!confirm(`Confirma a exclusão do projeto "${nome}"?`)) return
       try {
@@ -420,6 +549,45 @@ function app() {
         this.showToast('Projeto excluído.')
       } catch {
         this.showToast('Erro ao excluir projeto.', true)
+      }
+    },
+
+    openEditProject(p) {
+      this.editingProject = p.id
+      this.projectForm = { nome: p.nome, ativo: p.ativo, instituicao: p.instituicao ?? '' }
+      this.projectFormErrors = {}
+      this.showProjectForm = true
+    },
+
+    cancelProjectForm() {
+      this.showProjectForm = false
+      this.editingProject = null
+      this.projectFormErrors = {}
+    },
+
+    async saveProject() {
+      this.projectFormErrors = {}
+      if (!this.projectForm.nome.trim()) {
+        this.projectFormErrors.nome = 'Obrigatório'
+        return
+      }
+      this.projectFormLoading = true
+      try {
+        const res = await fetch(`/api/projects/${this.editingProject}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.projectForm)
+        })
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
+        const idx = this.allProjects.findIndex(p => p.id === this.editingProject)
+        if (idx >= 0) this.allProjects[idx] = body
+        this.cancelProjectForm()
+        this.showToast('Projeto atualizado!')
+      } catch {
+        this.showToast('Erro de conexão.', true)
+      } finally {
+        this.projectFormLoading = false
       }
     },
 

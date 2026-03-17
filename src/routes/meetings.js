@@ -3,23 +3,34 @@ import pool from '../db.js'
 
 const meetings = new Hono()
 
-const ALLOWED_SORT = ['data_hora', 'tipo']
+const ALLOWED_SORT = ['data_hora', 'tipo', 'participantes_nomes', 'projeto_nomes']
 
 // GET /api/meetings
 meetings.get('/', async (c) => {
-  const q = c.req.query('q') ?? ''
+  const q      = c.req.query('q')      ?? ''
+  const qPart  = c.req.query('q_part') ?? ''
+  const qProj  = c.req.query('q_proj') ?? ''
   const sort = ALLOWED_SORT.includes(c.req.query('sort')) ? c.req.query('sort') : 'data_hora'
   const order = c.req.query('order') === 'asc' ? 'ASC' : 'DESC'
   const page = Math.max(1, Number(c.req.query('page') ?? 1))
   const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') ?? 50)))
   const offset = (page - 1) * limit
 
-  let where = ''
+  const conditions = []
   const params = []
   if (q) {
-    where = 'WHERE pr.nome LIKE ? OR p.nome LIKE ?'
+    conditions.push('(pr.nome LIKE ? OR p.nome LIKE ?)')
     params.push(`%${q}%`, `%${q}%`)
   }
+  if (qPart) {
+    conditions.push('p.nome LIKE ?')
+    params.push(`%${qPart}%`)
+  }
+  if (qProj) {
+    conditions.push('pr.nome LIKE ?')
+    params.push(`%${qProj}%`)
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
   const [[{ total }]] = await pool.query(
     `SELECT COUNT(DISTINCT r.id) AS total
@@ -45,7 +56,7 @@ meetings.get('/', async (c) => {
      LEFT JOIN projeto pr ON pr.id = rpj.projeto_id
      ${where}
      GROUP BY r.id
-     ORDER BY r.${sort} ${order}
+     ORDER BY ${sort === 'participantes_nomes' ? 'participantes_nomes' : sort === 'projeto_nomes' ? 'projeto_nomes' : 'r.' + sort} ${order}
      LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   )

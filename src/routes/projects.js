@@ -38,6 +38,26 @@ projects.get('/', async (c) => {
   return c.json({ data, total })
 })
 
+// PUT /api/projects/:id
+projects.put('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const body = await c.req.json()
+  const nome = body.nome?.trim()
+  if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
+  if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
+  const ativo = body.ativo === true || body.ativo === 1 ? 1 : 0
+  const [result] = await pool.query(
+    'UPDATE projeto SET nome=?, ativo=?, instituicao=? WHERE id=?',
+    [nome, ativo, body.instituicao?.trim() || null, id]
+  )
+  if (result.affectedRows === 0) return c.json({ error: 'Projeto não encontrado' }, 404)
+  const [[row]] = await pool.query(
+    'SELECT id, nome, ativo, instituicao FROM projeto WHERE id=?', [id]
+  )
+  return c.json({ ...row, ativo: Boolean(row.ativo) })
+})
+
 // DELETE /api/projects/:id
 projects.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))

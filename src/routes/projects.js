@@ -38,4 +38,13 @@ projects.get('/', async (c) => {
   return c.json({ data, total })
 })
 
+// DELETE /api/projects/:id
+projects.delete('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const [result] = await pool.query('DELETE FROM projeto WHERE id = ?', [id])
+  if (result.affectedRows === 0) return c.json({ error: 'Projeto não encontrado' }, 404)
+  return c.json({ ok: true })
+})
+
 export default projects

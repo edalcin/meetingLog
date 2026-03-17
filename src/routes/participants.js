@@ -46,4 +46,13 @@ participants.post('/', async (c) => {
   return c.json(row, 201)
 })
 
+// DELETE /api/participants/:id
+participants.delete('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const [result] = await pool.query('DELETE FROM participante WHERE id = ?', [id])
+  if (result.affectedRows === 0) return c.json({ error: 'Participante não encontrado' }, 404)
+  return c.json({ ok: true })
+})
+
 export default participants

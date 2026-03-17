@@ -27,6 +27,20 @@ function app() {
     formData: { data: '', hora: '', tipo: '' },
     formErrors: {},
 
+    // Participants list (tab)
+    participantListLoading: false,
+    participantListFilter: '',
+    participantListAll: [],
+
+    get filteredParticipantList() {
+      const q = this.participantListFilter.toLowerCase()
+      if (!q) return this.participantListAll
+      return this.participantListAll.filter(p =>
+        p.nome.toLowerCase().includes(q) ||
+        (p.instituicao && p.instituicao.toLowerCase().includes(q))
+      )
+    },
+
     // Participants multi-select
     allParticipants: [],
     selectedParticipantIds: new Set(),
@@ -87,6 +101,7 @@ function app() {
       })
       this.$watch('activeTab', (tab) => {
         if (tab === 'projects') this.loadProjects()
+        if (tab === 'participants') this.loadParticipantList()
       })
     },
 
@@ -137,6 +152,25 @@ function app() {
       } finally {
         this.loading = false
       }
+    },
+
+    async loadParticipantList() {
+      if (this.participantListAll.length > 0) return
+      this.participantListLoading = true
+      try {
+        const res = await fetch('/api/participants?limit=500')
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        this.participantListAll = data.data
+      } catch {
+        this.showToast('Erro ao carregar participantes', true)
+      } finally {
+        this.participantListLoading = false
+      }
+    },
+
+    filterParticipantList() {
+      // computed via getter — no-op trigger for Alpine reactivity
     },
 
     async loadParticipants() {
@@ -349,6 +383,43 @@ function app() {
         this.showToast('Erro de conexão. Tente novamente.', true)
       } finally {
         this.formLoading = false
+      }
+    },
+
+    async deleteMeeting(id) {
+      if (!confirm('Confirma a exclusão desta reunião?')) return
+      try {
+        const res = await fetch(`/api/meetings/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        this.showToast('Reunião excluída.')
+        await this.loadMeetings()
+      } catch {
+        this.showToast('Erro ao excluir reunião.', true)
+      }
+    },
+
+    async deleteParticipant(id, nome) {
+      if (!confirm(`Confirma a exclusão de "${nome}"?`)) return
+      try {
+        const res = await fetch(`/api/participants/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        this.participantListAll = this.participantListAll.filter(p => p.id !== id)
+        this.allParticipants = this.allParticipants.filter(p => p.id !== id)
+        this.showToast('Participante excluído.')
+      } catch {
+        this.showToast('Erro ao excluir participante.', true)
+      }
+    },
+
+    async deleteProject(id, nome) {
+      if (!confirm(`Confirma a exclusão do projeto "${nome}"?`)) return
+      try {
+        const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        this.allProjects = this.allProjects.filter(p => p.id !== id)
+        this.showToast('Projeto excluído.')
+      } catch {
+        this.showToast('Erro ao excluir projeto.', true)
       }
     },
 

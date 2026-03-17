@@ -266,6 +266,15 @@ meetings.put('/:id', async (c) => {
   }
 })
 
+// DELETE /api/meetings/:id
+meetings.delete('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const [result] = await pool.query('DELETE FROM reuniao WHERE id = ?', [id])
+  if (result.affectedRows === 0) return c.json({ error: 'Reunião não encontrada' }, 404)
+  return c.json({ ok: true })
+})
+
 function validate(body) {
   const errors = {}
   if (!body.data_hora) errors.data_hora = 'Obrigatório'

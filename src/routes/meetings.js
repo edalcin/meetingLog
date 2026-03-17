@@ -32,19 +32,19 @@ meetings.get('/', async (c) => {
   }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-  const [[{ total }]] = await pool.query(
-    `SELECT COUNT(DISTINCT r.id) AS total
-     FROM reuniao r
-     LEFT JOIN reuniao_participante rp ON rp.reuniao_id = r.id
-     LEFT JOIN participante p ON p.id = rp.participante_id
-     LEFT JOIN reuniao_projeto rpj ON rpj.reuniao_id = r.id
-     LEFT JOIN projeto pr ON pr.id = rpj.projeto_id
-     ${where}`,
-    params
-  )
-
-  const [rows] = await pool.query(
-    `SELECT r.id, r.data_hora, r.tipo, r.criado_em, r.atualizado_em,
+  const [[[{ total }]], [rows]] = await Promise.all([
+    pool.query(
+      `SELECT COUNT(DISTINCT r.id) AS total
+       FROM reuniao r
+       LEFT JOIN reuniao_participante rp ON rp.reuniao_id = r.id
+       LEFT JOIN participante p ON p.id = rp.participante_id
+       LEFT JOIN reuniao_projeto rpj ON rpj.reuniao_id = r.id
+       LEFT JOIN projeto pr ON pr.id = rpj.projeto_id
+       ${where}`,
+      params
+    ),
+    pool.query(
+      `SELECT r.id, r.data_hora, r.tipo, r.criado_em, r.atualizado_em,
             GROUP_CONCAT(DISTINCT p.nome  ORDER BY p.nome  SEPARATOR ', ') AS participantes_nomes,
             GROUP_CONCAT(DISTINCT p.id    ORDER BY p.nome)                  AS participante_ids_str,
             GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR ', ') AS projeto_nomes,
@@ -58,8 +58,9 @@ meetings.get('/', async (c) => {
      GROUP BY r.id
      ORDER BY ${sort === 'participantes_nomes' ? 'participantes_nomes' : sort === 'projeto_nomes' ? 'projeto_nomes' : 'r.' + sort} ${order}
      LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
-  )
+      [...params, limit, offset]
+    )
+  ])
 
   const data = rows.map(r => ({
     ...r,

@@ -50,16 +50,16 @@ function app() {
     showParticipantForm: false,
 
     get filteredParticipantList() {
-      let list = this.participantListAll
       const q = this.participantListFilter.toLowerCase()
-      if (q) list = list.filter(p =>
-        p.nome.toLowerCase().includes(q) ||
-        (p.instituicao && p.instituicao.toLowerCase().includes(q))
-      )
       const inst = this.participantInstFilter.toLowerCase()
-      if (inst) list = list.filter(p =>
-        p.instituicao && p.instituicao.toLowerCase().includes(inst)
-      )
+      let list = this.participantListAll
+      if (q || inst) {
+        list = list.filter(p => {
+          if (q && !(p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q)))) return false
+          if (inst && !(p.instituicao && p.instituicao.toLowerCase().includes(inst))) return false
+          return true
+        })
+      }
       return [...list].sort((a, b) => {
         const av = (a[this.participantSortCol] ?? '').toString().toLowerCase()
         const bv = (b[this.participantSortCol] ?? '').toString().toLowerCase()
@@ -106,13 +106,17 @@ function app() {
     showProjectForm: false,
 
     get filteredProjectList() {
-      let list = this.allProjects
       const inst = this.projectInstFilter.toLowerCase()
-      if (inst) list = list.filter(p =>
-        p.instituicao && p.instituicao.toLowerCase().includes(inst)
-      )
-      if (this.projectStatusFilter === 'ativo') list = list.filter(p => p.ativo)
-      if (this.projectStatusFilter === 'inativo') list = list.filter(p => !p.ativo)
+      const status = this.projectStatusFilter
+      let list = this.allProjects
+      if (inst || status) {
+        list = list.filter(p => {
+          if (inst && !(p.instituicao && p.instituicao.toLowerCase().includes(inst))) return false
+          if (status === 'ativo' && !p.ativo) return false
+          if (status === 'inativo' && p.ativo) return false
+          return true
+        })
+      }
       return [...list].sort((a, b) => {
         const col = this.projectSortCol
         if (col === 'ativo') {

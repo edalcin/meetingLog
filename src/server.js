@@ -6,6 +6,7 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import meetingsRouter from './routes/meetings.js'
 import participantsRouter from './routes/participants.js'
+import projectsRouter from './routes/projects.js'
 import pool from './db.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -33,6 +34,9 @@ app.route('/api/meetings', meetingsRouter)
 
 // Participants API
 app.route('/api/participants', participantsRouter)
+
+// Projects API
+app.route('/api/projects', projectsRouter)
 
 // Serve static files
 app.use('/*', serveStatic({ root: './public' }))

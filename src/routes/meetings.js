@@ -3,7 +3,7 @@ import pool from '../db.js'
 
 const meetings = new Hono()
 
-const ALLOWED_SORT = ['data_hora', 'tipo', 'projeto']
+const ALLOWED_SORT = ['data_hora', 'tipo']
 
 // GET /api/meetings
 meetings.get('/', async (c) => {
@@ -17,7 +17,7 @@ meetings.get('/', async (c) => {
   let where = ''
   const params = []
   if (q) {
-    where = 'WHERE r.projeto LIKE ? OR p.nome LIKE ?'
+    where = 'WHERE pr.nome LIKE ? OR p.nome LIKE ?'
     params.push(`%${q}%`, `%${q}%`)
   }
 
@@ -26,17 +26,23 @@ meetings.get('/', async (c) => {
      FROM reuniao r
      LEFT JOIN reuniao_participante rp ON rp.reuniao_id = r.id
      LEFT JOIN participante p ON p.id = rp.participante_id
+     LEFT JOIN reuniao_projeto rpj ON rpj.reuniao_id = r.id
+     LEFT JOIN projeto pr ON pr.id = rpj.projeto_id
      ${where}`,
     params
   )
 
   const [rows] = await pool.query(
-    `SELECT r.id, r.data_hora, r.tipo, r.projeto, r.criado_em, r.atualizado_em,
-            GROUP_CONCAT(p.nome ORDER BY p.nome SEPARATOR ', ') AS participantes_nomes,
-            GROUP_CONCAT(p.id ORDER BY p.nome)                  AS participante_ids_str
+    `SELECT r.id, r.data_hora, r.tipo, r.criado_em, r.atualizado_em,
+            GROUP_CONCAT(DISTINCT p.nome  ORDER BY p.nome  SEPARATOR ', ') AS participantes_nomes,
+            GROUP_CONCAT(DISTINCT p.id    ORDER BY p.nome)                  AS participante_ids_str,
+            GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR ', ') AS projeto_nomes,
+            GROUP_CONCAT(DISTINCT pr.id   ORDER BY pr.nome)                 AS projeto_ids_str
      FROM reuniao r
      LEFT JOIN reuniao_participante rp ON rp.reuniao_id = r.id
      LEFT JOIN participante p ON p.id = rp.participante_id
+     LEFT JOIN reuniao_projeto rpj ON rpj.reuniao_id = r.id
+     LEFT JOIN projeto pr ON pr.id = rpj.projeto_id
      ${where}
      GROUP BY r.id
      ORDER BY r.${sort} ${order}
@@ -50,7 +56,12 @@ meetings.get('/', async (c) => {
     participante_ids: r.participante_ids_str
       ? r.participante_ids_str.split(',').map(Number)
       : [],
-    participante_ids_str: undefined
+    participante_ids_str: undefined,
+    projeto_nomes: r.projeto_nomes ?? '',
+    projeto_ids: r.projeto_ids_str
+      ? r.projeto_ids_str.split(',').map(Number)
+      : [],
+    projeto_ids_str: undefined
   }))
 
   return c.json({ data, total, page, limit, pages: Math.ceil(total / limit) })
@@ -59,7 +70,10 @@ meetings.get('/', async (c) => {
 // GET /api/meetings/:id
 meetings.get('/:id', async (c) => {
   const id = Number(c.req.param('id'))
-  const [[row]] = await pool.query('SELECT * FROM reuniao WHERE id = ?', [id])
+  const [[row]] = await pool.query(
+    'SELECT id, data_hora, tipo, criado_em, atualizado_em FROM reuniao WHERE id = ?',
+    [id]
+  )
   if (!row) return c.json({ error: 'Reunião não encontrada' }, 404)
 
   const [pRows] = await pool.query(
@@ -71,11 +85,25 @@ meetings.get('/:id', async (c) => {
     [id]
   )
 
+  const [prRows] = await pool.query(
+    `SELECT pr.id, pr.nome, pr.ativo, pr.instituicao
+     FROM reuniao_projeto rpj
+     JOIN projeto pr ON pr.id = rpj.projeto_id
+     WHERE rpj.reuniao_id = ?
+     ORDER BY pr.nome`,
+    [id]
+  )
+
+  const projetos = prRows.map(pr => ({ ...pr, ativo: Boolean(pr.ativo) }))
+
   return c.json({
     ...row,
     participantes: pRows,
     participante_ids: pRows.map(p => p.id),
-    participantes_nomes: pRows.map(p => p.nome).join(', ')
+    participantes_nomes: pRows.map(p => p.nome).join(', '),
+    projetos,
+    projeto_ids: projetos.map(pr => pr.id),
+    projeto_nomes: projetos.map(pr => pr.nome).join(', ')
   })
 })
 
@@ -87,15 +115,15 @@ meetings.post('/', async (c) => {
     return c.json({ error: 'Validation failed', fields: errors }, 400)
   }
 
-  const { data_hora, tipo, participante_ids, projeto } = body
+  const { data_hora, tipo, participante_ids, projeto_ids = [] } = body
 
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
 
     const [result] = await conn.query(
-      'INSERT INTO reuniao (data_hora, tipo, projeto) VALUES (?, ?, ?)',
-      [data_hora, tipo, projeto]
+      'INSERT INTO reuniao (data_hora, tipo) VALUES (?, ?)',
+      [data_hora, tipo]
     )
     const reuniaoId = result.insertId
 
@@ -106,9 +134,19 @@ meetings.post('/', async (c) => {
       )
     }
 
+    for (const prid of projeto_ids) {
+      await conn.query(
+        'INSERT IGNORE INTO reuniao_projeto (reuniao_id, projeto_id) VALUES (?, ?)',
+        [reuniaoId, prid]
+      )
+    }
+
     await conn.commit()
 
-    const [[created]] = await conn.query('SELECT * FROM reuniao WHERE id = ?', [reuniaoId])
+    const [[created]] = await conn.query(
+      'SELECT id, data_hora, tipo, criado_em, atualizado_em FROM reuniao WHERE id = ?',
+      [reuniaoId]
+    )
     const [pRows] = await conn.query(
       `SELECT p.id, p.nome, p.instituicao, p.cargo, p.email
        FROM reuniao_participante rp
@@ -117,12 +155,25 @@ meetings.post('/', async (c) => {
        ORDER BY p.nome`,
       [reuniaoId]
     )
+    const [prRows] = await conn.query(
+      `SELECT pr.id, pr.nome, pr.ativo, pr.instituicao
+       FROM reuniao_projeto rpj
+       JOIN projeto pr ON pr.id = rpj.projeto_id
+       WHERE rpj.reuniao_id = ?
+       ORDER BY pr.nome`,
+      [reuniaoId]
+    )
+
+    const projetos = prRows.map(pr => ({ ...pr, ativo: Boolean(pr.ativo) }))
 
     return c.json({
       ...created,
       participantes: pRows,
       participante_ids: pRows.map(p => p.id),
-      participantes_nomes: pRows.map(p => p.nome).join(', ')
+      participantes_nomes: pRows.map(p => p.nome).join(', '),
+      projetos,
+      projeto_ids: projetos.map(pr => pr.id),
+      projeto_nomes: projetos.map(pr => pr.nome).join(', ')
     }, 201)
   } catch (err) {
     await conn.rollback()
@@ -144,15 +195,15 @@ meetings.put('/:id', async (c) => {
     return c.json({ error: 'Validation failed', fields: errors }, 400)
   }
 
-  const { data_hora, tipo, participante_ids, projeto } = body
+  const { data_hora, tipo, participante_ids, projeto_ids = [] } = body
 
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
 
     await conn.query(
-      'UPDATE reuniao SET data_hora = ?, tipo = ?, projeto = ? WHERE id = ?',
-      [data_hora, tipo, projeto, id]
+      'UPDATE reuniao SET data_hora = ?, tipo = ? WHERE id = ?',
+      [data_hora, tipo, id]
     )
 
     await conn.query('DELETE FROM reuniao_participante WHERE reuniao_id = ?', [id])
@@ -164,9 +215,21 @@ meetings.put('/:id', async (c) => {
       )
     }
 
+    await conn.query('DELETE FROM reuniao_projeto WHERE reuniao_id = ?', [id])
+
+    for (const prid of projeto_ids) {
+      await conn.query(
+        'INSERT IGNORE INTO reuniao_projeto (reuniao_id, projeto_id) VALUES (?, ?)',
+        [id, prid]
+      )
+    }
+
     await conn.commit()
 
-    const [[updated]] = await conn.query('SELECT * FROM reuniao WHERE id = ?', [id])
+    const [[updated]] = await conn.query(
+      'SELECT id, data_hora, tipo, criado_em, atualizado_em FROM reuniao WHERE id = ?',
+      [id]
+    )
     const [pRows] = await conn.query(
       `SELECT p.id, p.nome, p.instituicao, p.cargo, p.email
        FROM reuniao_participante rp
@@ -175,12 +238,25 @@ meetings.put('/:id', async (c) => {
        ORDER BY p.nome`,
       [id]
     )
+    const [prRows] = await conn.query(
+      `SELECT pr.id, pr.nome, pr.ativo, pr.instituicao
+       FROM reuniao_projeto rpj
+       JOIN projeto pr ON pr.id = rpj.projeto_id
+       WHERE rpj.reuniao_id = ?
+       ORDER BY pr.nome`,
+      [id]
+    )
+
+    const projetos = prRows.map(pr => ({ ...pr, ativo: Boolean(pr.ativo) }))
 
     return c.json({
       ...updated,
       participantes: pRows,
       participante_ids: pRows.map(p => p.id),
-      participantes_nomes: pRows.map(p => p.nome).join(', ')
+      participantes_nomes: pRows.map(p => p.nome).join(', '),
+      projetos,
+      projeto_ids: projetos.map(pr => pr.id),
+      projeto_nomes: projetos.map(pr => pr.nome).join(', ')
     })
   } catch (err) {
     await conn.rollback()
@@ -200,8 +276,13 @@ function validate(body) {
   } else if (!body.participante_ids.every(id => Number.isInteger(id) && id > 0)) {
     errors.participante_ids = 'IDs de participantes inválidos'
   }
-  if (!body.projeto?.trim()) errors.projeto = 'Obrigatório'
-  else if (body.projeto.length > 255) errors.projeto = 'Máximo 255 caracteres'
+  if (body.projeto_ids !== undefined) {
+    if (!Array.isArray(body.projeto_ids)) {
+      errors.projeto_ids = 'projeto_ids deve ser um array'
+    } else if (!body.projeto_ids.every(id => Number.isInteger(id) && id > 0)) {
+      errors.projeto_ids = 'IDs de projetos inválidos'
+    }
+  }
   return errors
 }
 

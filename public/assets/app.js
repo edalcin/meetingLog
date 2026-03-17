@@ -6,6 +6,9 @@ function app() {
     pinError: false,
     pinLoading: false,
 
+    // Navigation
+    activeTab: 'meetings',
+
     // Meetings list
     meetings: [],
     total: 0,
@@ -21,7 +24,7 @@ function app() {
     showForm: false,
     editingId: null,
     formLoading: false,
-    formData: { data: '', hora: '', tipo: '', projeto: '' },
+    formData: { data: '', hora: '', tipo: '' },
     formErrors: {},
 
     // Participants multi-select
@@ -46,6 +49,27 @@ function app() {
       return !this.allParticipants.some(p => p.nome.toLowerCase() === q.toLowerCase())
     },
 
+    // Projects list (for the projects tab)
+    allProjects: [],
+
+    // Projects multi-select (for meeting form)
+    selectedProjectIds: new Set(),
+    projectSearchQuery: '',
+    showProjectDropdown: false,
+
+    get filteredProjects() {
+      const q = this.projectSearchQuery.toLowerCase()
+      return this.allProjects.filter(pr => {
+        // Always exclude already-selected active projects (they appear as tags)
+        // Include inactive projects only if they are already selected (pre-populated)
+        if (this.selectedProjectIds.has(pr.id)) return false
+        if (!pr.ativo) return false
+        if (!q) return true
+        return pr.nome.toLowerCase().includes(q) ||
+          (pr.instituicao && pr.instituicao.toLowerCase().includes(q))
+      })
+    },
+
     // Toast
     toast: { show: false, message: '', error: false },
 
@@ -60,6 +84,9 @@ function app() {
           this.currentPage = 1
           this.loadMeetings()
         }, 300)
+      })
+      this.$watch('activeTab', (tab) => {
+        if (tab === 'projects') this.loadProjects()
       })
     },
 
@@ -124,6 +151,18 @@ function app() {
       }
     },
 
+    async loadProjects() {
+      if (this.allProjects.length > 0) return
+      try {
+        const res = await fetch('/api/projects?limit=500')
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        this.allProjects = data.data
+      } catch {
+        this.showToast('Erro ao carregar projetos', true)
+      }
+    },
+
     async handleParticipantEnter() {
       const q = this.participantSearch.trim()
       if (!q) return
@@ -180,6 +219,24 @@ function app() {
       return this.allParticipants.filter(p => this.selectedParticipantIds.has(p.id))
     },
 
+    selectProjectFromDropdown(id) {
+      const newSet = new Set(this.selectedProjectIds)
+      newSet.add(id)
+      this.selectedProjectIds = newSet
+      this.projectSearchQuery = ''
+      this.showProjectDropdown = false
+    },
+
+    removeProject(id) {
+      const newSet = new Set(this.selectedProjectIds)
+      newSet.delete(id)
+      this.selectedProjectIds = newSet
+    },
+
+    getSelectedProjects() {
+      return this.allProjects.filter(pr => this.selectedProjectIds.has(pr.id))
+    },
+
     setSort(col) {
       if (this.sortCol === col) {
         this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
@@ -208,13 +265,17 @@ function app() {
 
     async openForm() {
       this.editingId = null
-      this.formData = { data: '', hora: '', tipo: '', projeto: '' }
+      this.formData = { data: '', hora: '', tipo: '' }
       this.formErrors = {}
       this.selectedParticipantIds = new Set()
       this.participantSearch = ''
       this.showParticipantDropdown = false
+      this.selectedProjectIds = new Set()
+      this.projectSearchQuery = ''
+      this.showProjectDropdown = false
       this.showForm = true
       await this.loadParticipants()
+      await this.loadProjects()
     },
 
     async editMeeting(m) {
@@ -224,15 +285,18 @@ function app() {
       this.formData = {
         data: `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`,
         hora: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
-        tipo: m.tipo,
-        projeto: m.projeto
+        tipo: m.tipo
       }
       this.formErrors = {}
       this.participantSearch = ''
       this.showParticipantDropdown = false
+      this.projectSearchQuery = ''
+      this.showProjectDropdown = false
       this.showForm = true
       await this.loadParticipants()
+      await this.loadProjects()
       this.selectedParticipantIds = new Set(m.participante_ids || [])
+      this.selectedProjectIds = new Set(m.projeto_ids || [])
     },
 
     cancelForm() {
@@ -242,6 +306,9 @@ function app() {
       this.selectedParticipantIds = new Set()
       this.participantSearch = ''
       this.showParticipantDropdown = false
+      this.selectedProjectIds = new Set()
+      this.projectSearchQuery = ''
+      this.showProjectDropdown = false
     },
 
     async saveMeeting() {
@@ -253,7 +320,7 @@ function app() {
         data_hora,
         tipo: this.formData.tipo,
         participante_ids: Array.from(this.selectedParticipantIds),
-        projeto: this.formData.projeto
+        projeto_ids: Array.from(this.selectedProjectIds)
       }
 
       this.formLoading = true

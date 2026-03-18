@@ -37,10 +37,8 @@ function app() {
     participantListLoading: false,
     participantListAll: [],
 
-    // Participants tab filter multi-select & sort
-    filterPartListIds: new Set(),
-    filterPartListSearch: '',
-    showFilterPartListDropdown: false,
+    // Participants tab filter & sort
+    filterInstituicao: '',
     participantSortCol: 'nome',
     participantSortOrder: 'asc',
 
@@ -52,22 +50,14 @@ function app() {
     showParticipantForm: false,
 
     get filteredParticipantList() {
-      let list = this.filterPartListIds.size > 0
-        ? this.participantListAll.filter(p => this.filterPartListIds.has(p.id))
+      const q = this.filterInstituicao.toLowerCase()
+      let list = q
+        ? this.participantListAll.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
         : this.participantListAll
       return [...list].sort((a, b) => {
         const av = (a[this.participantSortCol] ?? '').toString().toLowerCase()
         const bv = (b[this.participantSortCol] ?? '').toString().toLowerCase()
         return this.participantSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
-      })
-    },
-
-    get filteredParticipantsForListFilter() {
-      const q = this.filterPartListSearch.toLowerCase()
-      return this.participantListAll.filter(p => {
-        if (this.filterPartListIds.has(p.id)) return false
-        if (!q) return true
-        return p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q))
       })
     },
 
@@ -114,11 +104,9 @@ function app() {
     // Projects list (for the projects tab)
     allProjects: [],
 
-    // Projects tab filter multi-select & sort
+    // Projects tab filter & sort
     projectStatusFilter: '',
-    filterProjListIds: new Set(),
-    filterProjListSearch: '',
-    showFilterProjListDropdown: false,
+    filterProjInstituicao: '',
     projectSortCol: 'nome',
     projectSortOrder: 'asc',
 
@@ -131,8 +119,9 @@ function app() {
 
     get filteredProjectList() {
       const status = this.projectStatusFilter
-      let list = this.filterProjListIds.size > 0
-        ? this.allProjects.filter(p => this.filterProjListIds.has(p.id))
+      const q = this.filterProjInstituicao.toLowerCase()
+      let list = q
+        ? this.allProjects.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
         : this.allProjects
       if (status) {
         list = list.filter(p => {
@@ -151,15 +140,6 @@ function app() {
         const av = (a[col] ?? '').toString().toLowerCase()
         const bv = (b[col] ?? '').toString().toLowerCase()
         return this.projectSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
-      })
-    },
-
-    get filteredProjectsForListFilter() {
-      const q = this.filterProjListSearch.toLowerCase()
-      return this.allProjects.filter(pr => {
-        if (this.filterProjListIds.has(pr.id)) return false
-        if (!q) return true
-        return pr.nome.toLowerCase().includes(q) || (pr.instituicao && pr.instituicao.toLowerCase().includes(q))
       })
     },
 
@@ -307,32 +287,6 @@ function app() {
 
     getSelectedFilterProjs() {
       return this.allProjects.filter(pr => this.filterProjIds.has(pr.id))
-    },
-
-    // --- Participants tab filter methods ---
-    toggleFilterPartList(id) {
-      const s = new Set(this.filterPartListIds)
-      s.has(id) ? s.delete(id) : s.add(id)
-      this.filterPartListIds = s
-      this.filterPartListSearch = ''
-      this.showFilterPartListDropdown = false
-    },
-
-    getSelectedFilterPartList() {
-      return this.participantListAll.filter(p => this.filterPartListIds.has(p.id))
-    },
-
-    // --- Projects tab filter methods ---
-    toggleFilterProjList(id) {
-      const s = new Set(this.filterProjListIds)
-      s.has(id) ? s.delete(id) : s.add(id)
-      this.filterProjListIds = s
-      this.filterProjListSearch = ''
-      this.showFilterProjListDropdown = false
-    },
-
-    getSelectedFilterProjList() {
-      return this.allProjects.filter(pr => this.filterProjListIds.has(pr.id))
     },
 
     async loadParticipants() {

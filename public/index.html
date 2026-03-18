@@ -341,43 +341,17 @@
         <div x-show="activeTab === 'participants'">
 
           <!-- Filter Bar -->
-          <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-start">
-            <div class="flex-1 min-w-48">
-              <div x-show="filterPartListIds.size > 0" class="flex flex-wrap gap-1 mb-1">
-                <template x-for="p in getSelectedFilterPartList()" :key="p.id">
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    <span x-text="p.nome"></span>
-                    <button type="button" @click="toggleFilterPartList(p.id)" class="text-blue-500 hover:text-blue-700 leading-none">&times;</button>
-                  </span>
-                </template>
-              </div>
-              <div class="relative" @click.away="showFilterPartListDropdown = false">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input
-                  x-model="filterPartListSearch"
-                  type="text"
-                  placeholder="Filtrar por nome ou instituição..."
-                  @focus="showFilterPartListDropdown = true"
-                  @input="showFilterPartListDropdown = true"
-                  @keydown.escape="showFilterPartListDropdown = false; filterPartListSearch = ''"
-                  class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                  autocomplete="off"
-                />
-                <div x-show="showFilterPartListDropdown"
-                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-                  <div x-show="filteredParticipantsForListFilter.length === 0"
-                       class="px-3 py-2 text-sm text-gray-400">Nenhum participante encontrado.</div>
-                  <template x-for="p in filteredParticipantsForListFilter" :key="p.id">
-                    <div @mousedown.prevent="toggleFilterPartList(p.id)"
-                         class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
-                      <span x-text="p.nome" class="font-medium text-gray-900"></span>
-                      <span x-show="p.instituicao" x-text="' · ' + p.instituicao" class="text-gray-400 text-xs"></span>
-                    </div>
-                  </template>
-                </div>
-              </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
+            <div class="flex-1 min-w-48 relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input
+                x-model="filterInstituicao"
+                type="text"
+                placeholder="Filtrar por instituição..."
+                class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+              />
             </div>
             <div class="text-sm text-gray-500 flex items-center">
               <span x-text="filteredParticipantList.length + ' participantes'"></span>
@@ -461,43 +435,17 @@
         <div x-show="activeTab === 'projects'">
 
           <!-- Filter Bar -->
-          <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-start">
-            <div class="flex-1 min-w-48">
-              <div x-show="filterProjListIds.size > 0" class="flex flex-wrap gap-1 mb-1">
-                <template x-for="pr in getSelectedFilterProjList()" :key="pr.id">
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs rounded-full">
-                    <span x-text="pr.nome"></span>
-                    <button type="button" @click="toggleFilterProjList(pr.id)" class="text-indigo-500 hover:text-indigo-700 leading-none">&times;</button>
-                  </span>
-                </template>
-              </div>
-              <div class="relative" @click.away="showFilterProjListDropdown = false">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input
-                  x-model="filterProjListSearch"
-                  type="text"
-                  placeholder="Filtrar por projeto..."
-                  @focus="showFilterProjListDropdown = true"
-                  @input="showFilterProjListDropdown = true"
-                  @keydown.escape="showFilterProjListDropdown = false; filterProjListSearch = ''"
-                  class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                  autocomplete="off"
-                />
-                <div x-show="showFilterProjListDropdown"
-                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-                  <div x-show="filteredProjectsForListFilter.length === 0"
-                       class="px-3 py-2 text-sm text-gray-400">Nenhum projeto encontrado.</div>
-                  <template x-for="pr in filteredProjectsForListFilter" :key="pr.id">
-                    <div @mousedown.prevent="toggleFilterProjList(pr.id)"
-                         class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
-                      <span x-text="pr.nome" class="font-medium text-gray-900"></span>
-                      <span x-show="pr.instituicao" x-text="' · ' + pr.instituicao" class="text-gray-400 text-xs"></span>
-                    </div>
-                  </template>
-                </div>
-              </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
+            <div class="flex-1 min-w-48 relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input
+                x-model="filterProjInstituicao"
+                type="text"
+                placeholder="Filtrar por instituição..."
+                class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+              />
             </div>
             <select x-model="projectStatusFilter"
                     class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors">

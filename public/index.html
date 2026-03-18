@@ -350,7 +350,7 @@
                 <input
                   x-model="filterInstituicao"
                   type="text"
-                  placeholder="Filtrar participante..."
+                  placeholder="Filtrar por instituição..."
                   @focus="showInstituicaoDropdown = true"
                   @input="showInstituicaoDropdown = true"
                   @keydown.escape="showInstituicaoDropdown = false; filterInstituicao = ''"
@@ -360,12 +360,10 @@
                 <div x-show="showInstituicaoDropdown"
                      class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
                   <div x-show="instituicaoOptions.length === 0"
-                       class="px-3 py-2 text-sm text-gray-400">Nenhum participante encontrado.</div>
-                  <template x-for="p in instituicaoOptions" :key="p.id">
-                    <div @mousedown.prevent="filterInstituicao = p.nome; showInstituicaoDropdown = false"
-                         class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
-                      <span x-text="p.nome" class="font-medium text-gray-900"></span>
-                      <span x-show="p.instituicao" x-text="'· ' + p.instituicao" class="text-gray-400 text-xs"></span>
+                       class="px-3 py-2 text-sm text-gray-400">Nenhuma instituição encontrada.</div>
+                  <template x-for="inst in instituicaoOptions" :key="inst">
+                    <div @mousedown.prevent="filterInstituicao = inst; showInstituicaoDropdown = false"
+                         class="px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900" x-text="inst">
                     </div>
                   </template>
                 </div>
@@ -462,7 +460,7 @@
                 <input
                   x-model="filterProjInstituicao"
                   type="text"
-                  placeholder="Filtrar projeto..."
+                  placeholder="Filtrar por instituição..."
                   @focus="showProjInstituicaoDropdown = true"
                   @input="showProjInstituicaoDropdown = true"
                   @keydown.escape="showProjInstituicaoDropdown = false; filterProjInstituicao = ''"
@@ -472,12 +470,10 @@
                 <div x-show="showProjInstituicaoDropdown"
                      class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
                   <div x-show="projInstituicaoOptions.length === 0"
-                       class="px-3 py-2 text-sm text-gray-400">Nenhum projeto encontrado.</div>
-                  <template x-for="pr in projInstituicaoOptions" :key="pr.id">
-                    <div @mousedown.prevent="filterProjInstituicao = pr.nome; showProjInstituicaoDropdown = false"
-                         class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
-                      <span x-text="pr.nome" class="font-medium text-gray-900"></span>
-                      <span x-show="pr.instituicao" x-text="'· ' + pr.instituicao" class="text-gray-400 text-xs"></span>
+                       class="px-3 py-2 text-sm text-gray-400">Nenhuma instituição encontrada.</div>
+                  <template x-for="inst in projInstituicaoOptions" :key="inst">
+                    <div @mousedown.prevent="filterProjInstituicao = inst; showProjInstituicaoDropdown = false"
+                         class="px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900" x-text="inst">
                     </div>
                   </template>
                 </div>

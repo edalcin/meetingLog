@@ -53,9 +53,7 @@ function app() {
     get filteredParticipantList() {
       const q = this.filterInstituicao.toLowerCase()
       let list = q
-        ? this.participantListAll.filter(p =>
-            p.nome.toLowerCase().includes(q) ||
-            (p.instituicao && p.instituicao.toLowerCase().includes(q)))
+        ? this.participantListAll.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
         : this.participantListAll
       return [...list].sort((a, b) => {
         const av = (a[this.participantSortCol] ?? '').toString().toLowerCase()
@@ -106,20 +104,14 @@ function app() {
 
     get instituicaoOptions() {
       const q = this.filterInstituicao.toLowerCase()
-      return this.participantListAll.filter(p => {
-        if (!q) return true
-        return p.nome.toLowerCase().includes(q) ||
-          (p.instituicao && p.instituicao.toLowerCase().includes(q))
-      })
+      const unique = [...new Set(this.participantListAll.map(p => p.instituicao).filter(Boolean))].sort()
+      return q ? unique.filter(i => i.toLowerCase().includes(q)) : unique
     },
 
     get projInstituicaoOptions() {
       const q = this.filterProjInstituicao.toLowerCase()
-      return this.allProjects.filter(p => {
-        if (!q) return true
-        return p.nome.toLowerCase().includes(q) ||
-          (p.instituicao && p.instituicao.toLowerCase().includes(q))
-      })
+      const unique = [...new Set(this.allProjects.map(p => p.instituicao).filter(Boolean))].sort()
+      return q ? unique.filter(i => i.toLowerCase().includes(q)) : unique
     },
 
     // Projects list (for the projects tab)
@@ -143,9 +135,7 @@ function app() {
       const status = this.projectStatusFilter
       const q = this.filterProjInstituicao.toLowerCase()
       let list = q
-        ? this.allProjects.filter(p =>
-            p.nome.toLowerCase().includes(q) ||
-            (p.instituicao && p.instituicao.toLowerCase().includes(q)))
+        ? this.allProjects.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
         : this.allProjects
       if (status) {
         list = list.filter(p => {

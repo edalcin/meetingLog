@@ -342,16 +342,33 @@
 
           <!-- Filter Bar -->
           <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
-            <div class="flex-1 min-w-48 relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-              <input
-                x-model="filterInstituicao"
-                type="text"
-                placeholder="Filtrar por instituição..."
-                class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-              />
+            <div class="flex-1 min-w-48">
+              <div class="relative" @click.away="showInstituicaoDropdown = false">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input
+                  x-model="filterInstituicao"
+                  type="text"
+                  placeholder="Filtrar por instituição..."
+                  @focus="showInstituicaoDropdown = true"
+                  @input="showInstituicaoDropdown = true"
+                  @keydown.escape="showInstituicaoDropdown = false; filterInstituicao = ''"
+                  class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                  autocomplete="off"
+                />
+                <div x-show="showInstituicaoDropdown"
+                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+                  <div x-show="instituicaoOptions.length === 0"
+                       class="px-3 py-2 text-sm text-gray-400">Nenhuma instituição encontrada.</div>
+                  <template x-for="inst in instituicaoOptions" :key="inst">
+                    <div @mousedown.prevent="filterInstituicao = inst; showInstituicaoDropdown = false"
+                         class="px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900">
+                      <span x-text="inst"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
             </div>
             <div class="text-sm text-gray-500 flex items-center">
               <span x-text="filteredParticipantList.length + ' participantes'"></span>
@@ -436,16 +453,33 @@
 
           <!-- Filter Bar -->
           <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
-            <div class="flex-1 min-w-48 relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-              <input
-                x-model="filterProjInstituicao"
-                type="text"
-                placeholder="Filtrar por instituição..."
-                class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-              />
+            <div class="flex-1 min-w-48">
+              <div class="relative" @click.away="showProjInstituicaoDropdown = false">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input
+                  x-model="filterProjInstituicao"
+                  type="text"
+                  placeholder="Filtrar por instituição..."
+                  @focus="showProjInstituicaoDropdown = true"
+                  @input="showProjInstituicaoDropdown = true"
+                  @keydown.escape="showProjInstituicaoDropdown = false; filterProjInstituicao = ''"
+                  class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                  autocomplete="off"
+                />
+                <div x-show="showProjInstituicaoDropdown"
+                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+                  <div x-show="projInstituicaoOptions.length === 0"
+                       class="px-3 py-2 text-sm text-gray-400">Nenhuma instituição encontrada.</div>
+                  <template x-for="inst in projInstituicaoOptions" :key="inst">
+                    <div @mousedown.prevent="filterProjInstituicao = inst; showProjInstituicaoDropdown = false"
+                         class="px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900">
+                      <span x-text="inst"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
             </div>
             <select x-model="projectStatusFilter"
                     class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors">

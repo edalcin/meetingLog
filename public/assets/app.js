@@ -39,6 +39,7 @@ function app() {
 
     // Participants tab filter & sort
     filterInstituicao: '',
+    showInstituicaoDropdown: false,
     participantSortCol: 'nome',
     participantSortOrder: 'asc',
 
@@ -101,12 +102,25 @@ function app() {
       })
     },
 
+    get instituicaoOptions() {
+      const q = this.filterInstituicao.toLowerCase()
+      const unique = [...new Set(this.participantListAll.map(p => p.instituicao).filter(Boolean))].sort()
+      return q ? unique.filter(i => i.toLowerCase().includes(q)) : unique
+    },
+
+    get projInstituicaoOptions() {
+      const q = this.filterProjInstituicao.toLowerCase()
+      const unique = [...new Set(this.allProjects.map(p => p.instituicao).filter(Boolean))].sort()
+      return q ? unique.filter(i => i.toLowerCase().includes(q)) : unique
+    },
+
     // Projects list (for the projects tab)
     allProjects: [],
 
     // Projects tab filter & sort
     projectStatusFilter: '',
     filterProjInstituicao: '',
+    showProjInstituicaoDropdown: false,
     projectSortCol: 'nome',
     projectSortOrder: 'asc',
 

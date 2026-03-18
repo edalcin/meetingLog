@@ -131,6 +131,43 @@ function app() {
     projectFormLoading: false,
     showProjectForm: false,
 
+    // Institutions list (tab)
+    institutionListLoading: false,
+    institutionListAll: [],
+    filterInstituicaoList: '',
+    showInstituicaoListDropdown: false,
+    institutionSortCol: 'sigla',
+    institutionSortOrder: 'asc',
+
+    // Institution edit modal
+    editingInstitution: null,
+    institutionForm: { sigla: '', nome: '' },
+    institutionFormErrors: {},
+    institutionFormLoading: false,
+    showInstitutionForm: false,
+
+    get filteredInstitutionList() {
+      const q = this.filterInstituicaoList.toLowerCase()
+      let list = q
+        ? this.institutionListAll.filter(i =>
+            i.sigla.toLowerCase().includes(q) ||
+            (i.nome && i.nome.toLowerCase().includes(q)))
+        : this.institutionListAll
+      return [...list].sort((a, b) => {
+        const av = (a[this.institutionSortCol] ?? '').toString().toLowerCase()
+        const bv = (b[this.institutionSortCol] ?? '').toString().toLowerCase()
+        return this.institutionSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    },
+
+    get instituicaoListOptions() {
+      const q = this.filterInstituicaoList.toLowerCase()
+      return this.institutionListAll.filter(i => {
+        if (!q) return true
+        return i.sigla.toLowerCase().includes(q) || (i.nome && i.nome.toLowerCase().includes(q))
+      })
+    },
+
     get filteredProjectList() {
       const status = this.projectStatusFilter
       const q = this.filterProjInstituicao.toLowerCase()
@@ -188,6 +225,7 @@ function app() {
       this.$watch('activeTab', (tab) => {
         if (tab === 'projects') this.loadProjects()
         if (tab === 'participants') this.loadParticipantList()
+        if (tab === 'institutions') this.loadInstitutionList()
       })
     },
 
@@ -648,6 +686,89 @@ function app() {
         this.showToast('Erro de conexão.', true)
       } finally {
         this.projectFormLoading = false
+      }
+    },
+
+    // --- Institutions list methods ---
+    async loadInstitutionList() {
+      if (this.institutionListLoading) return
+      this.institutionListLoading = true
+      try {
+        const res = await fetch('/api/institutions?limit=500')
+        const { data } = await res.json()
+        this.institutionListAll = data
+      } catch {
+        this.showToast('Erro ao carregar instituições.', true)
+      } finally {
+        this.institutionListLoading = false
+      }
+    },
+
+    setSortInstitution(col) {
+      if (this.institutionSortCol === col) {
+        this.institutionSortOrder = this.institutionSortOrder === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.institutionSortCol = col
+        this.institutionSortOrder = 'asc'
+      }
+    },
+
+    openEditInstitution(inst) {
+      this.editingInstitution = inst.id
+      this.institutionForm = { sigla: inst.sigla, nome: inst.nome ?? '' }
+      this.institutionFormErrors = {}
+      this.showInstitutionForm = true
+    },
+
+    cancelInstitutionForm() {
+      this.showInstitutionForm = false
+      this.editingInstitution = null
+      this.institutionFormErrors = {}
+    },
+
+    async saveInstitution() {
+      this.institutionFormErrors = {}
+      if (!this.institutionForm.sigla.trim()) {
+        this.institutionFormErrors.sigla = 'Obrigatório'
+        return
+      }
+      this.institutionFormLoading = true
+      try {
+        const url = this.editingInstitution
+          ? `/api/institutions/${this.editingInstitution}`
+          : '/api/institutions'
+        const method = this.editingInstitution ? 'PUT' : 'POST'
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.institutionForm)
+        })
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
+        if (this.editingInstitution) {
+          const idx = this.institutionListAll.findIndex(i => i.id === this.editingInstitution)
+          if (idx >= 0) this.institutionListAll[idx] = body
+        } else {
+          this.institutionListAll.push(body)
+        }
+        this.cancelInstitutionForm()
+        this.showToast(this.editingInstitution ? 'Instituição atualizada!' : 'Instituição criada!')
+      } catch {
+        this.showToast('Erro de conexão.', true)
+      } finally {
+        this.institutionFormLoading = false
+      }
+    },
+
+    async deleteInstitution(id, sigla) {
+      if (!confirm(`Confirma a exclusão da instituição "${sigla}"?`)) return
+      try {
+        const res = await fetch(`/api/institutions/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        this.institutionListAll = this.institutionListAll.filter(i => i.id !== id)
+        this.showToast('Instituição excluída.')
+      } catch {
+        this.showToast('Erro ao excluir instituição.', true)
       }
     },
 

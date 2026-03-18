@@ -1,0 +1,78 @@
+import { Hono } from 'hono'
+import pool from '../db.js'
+
+const institutions = new Hono()
+
+// GET /api/institutions?q=&limit=
+institutions.get('/', async (c) => {
+  const q = c.req.query('q') ?? ''
+  const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') ?? 200)))
+
+  let where = ''
+  const params = []
+  if (q) {
+    where = 'WHERE sigla LIKE ? OR nome LIKE ?'
+    params.push(`%${q}%`, `%${q}%`)
+  }
+
+  const [[{ total }]] = await pool.query(
+    `SELECT COUNT(*) AS total FROM instituicao ${where}`,
+    params
+  )
+
+  const [rows] = await pool.query(
+    `SELECT id, sigla, nome FROM instituicao ${where} ORDER BY sigla ASC LIMIT ?`,
+    [...params, limit]
+  )
+
+  return c.json({ data: rows, total })
+})
+
+// POST /api/institutions
+institutions.post('/', async (c) => {
+  const body = await c.req.json()
+  const sigla = body.sigla?.trim()
+  if (!sigla) return c.json({ error: 'Sigla é obrigatória' }, 400)
+  if (sigla.length > 100) return c.json({ error: 'Sigla muito longa' }, 400)
+
+  const [result] = await pool.query(
+    'INSERT INTO instituicao (sigla, nome) VALUES (?, ?)',
+    [sigla, body.nome?.trim() || null]
+  )
+  const [[row]] = await pool.query(
+    'SELECT id, sigla, nome FROM instituicao WHERE id = ?',
+    [result.insertId]
+  )
+  return c.json(row, 201)
+})
+
+// PUT /api/institutions/:id
+institutions.put('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const body = await c.req.json()
+  const sigla = body.sigla?.trim()
+  if (!sigla) return c.json({ error: 'Sigla é obrigatória' }, 400)
+  if (sigla.length > 100) return c.json({ error: 'Sigla muito longa' }, 400)
+
+  const [result] = await pool.query(
+    'UPDATE instituicao SET sigla=?, nome=? WHERE id=?',
+    [sigla, body.nome?.trim() || null, id]
+  )
+  if (result.affectedRows === 0) return c.json({ error: 'Instituição não encontrada' }, 404)
+  const [[row]] = await pool.query(
+    'SELECT id, sigla, nome FROM instituicao WHERE id=?', [id]
+  )
+  return c.json(row)
+})
+
+// DELETE /api/institutions/:id
+institutions.delete('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const [result] = await pool.query('DELETE FROM instituicao WHERE id = ?', [id])
+  if (result.affectedRows === 0) return c.json({ error: 'Instituição não encontrada' }, 404)
+  return c.json({ ok: true })
+})
+
+export default institutions

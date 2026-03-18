@@ -221,6 +221,7 @@ function app() {
         this.loadMeetings()
         this.loadParticipants()
         this.loadProjects()
+        this.loadInstitutionList()
       }
       this.$watch('activeTab', (tab) => {
         if (tab === 'projects') this.loadProjects()
@@ -246,6 +247,7 @@ function app() {
           this.loadMeetings()
           this.loadParticipants()
           this.loadProjects()
+          this.loadInstitutionList()
         } else {
           this.pinError = true
           this.pinInput = ''

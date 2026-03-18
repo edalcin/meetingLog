@@ -830,6 +830,7 @@ function app() {
     clearParticipantInst() {
       this.participantForm.instituicao = ''
       this.participantInstSearch = ''
+      this.showParticipantInstDropdown = false
     },
 
     async createAndSelectParticipantInst(sigla) {
@@ -858,6 +859,7 @@ function app() {
     clearProjectInst() {
       this.projectForm.instituicao = ''
       this.projectInstSearch = ''
+      this.showProjectInstDropdown = false
     },
 
     async createAndSelectProjectInst(sigla) {

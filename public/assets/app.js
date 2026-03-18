@@ -637,6 +637,7 @@ function app() {
       this.editingParticipant = p.id
       this.participantForm = { nome: p.nome, instituicao: p.instituicao ?? '', cargo: p.cargo ?? '', email: p.email ?? '' }
       this.participantFormErrors = {}
+      this.participantInstSearch = p.instituicao ?? ''
       this.showParticipantForm = true
     },
 
@@ -644,6 +645,8 @@ function app() {
       this.showParticipantForm = false
       this.editingParticipant = null
       this.participantFormErrors = {}
+      this.participantInstSearch = ''
+      this.showParticipantInstDropdown = false
     },
 
     async saveParticipant() {
@@ -690,6 +693,7 @@ function app() {
       this.editingProject = p.id
       this.projectForm = { nome: p.nome, ativo: p.ativo, instituicao: p.instituicao ?? '' }
       this.projectFormErrors = {}
+      this.projectInstSearch = p.instituicao ?? ''
       this.showProjectForm = true
     },
 
@@ -697,6 +701,8 @@ function app() {
       this.showProjectForm = false
       this.editingProject = null
       this.projectFormErrors = {}
+      this.projectInstSearch = ''
+      this.showProjectInstDropdown = false
     },
 
     async saveProject() {
@@ -805,6 +811,69 @@ function app() {
         this.showToast('Instituição excluída.')
       } catch {
         this.showToast('Erro ao excluir instituição.', true)
+      }
+    },
+
+    openNewInstitution() {
+      this.editingInstitution = null
+      this.institutionForm = { sigla: '', nome: '' }
+      this.institutionFormErrors = {}
+      this.showInstitutionForm = true
+    },
+
+    selectParticipantInst(sigla) {
+      this.participantForm.instituicao = sigla
+      this.participantInstSearch = sigla
+      this.showParticipantInstDropdown = false
+    },
+
+    clearParticipantInst() {
+      this.participantForm.instituicao = ''
+      this.participantInstSearch = ''
+    },
+
+    async createAndSelectParticipantInst(sigla) {
+      try {
+        const res = await fetch('/api/institutions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sigla })
+        })
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao criar instituição', true); return }
+        this.institutionListAll.push(body)
+        this.selectParticipantInst(body.sigla)
+        this.showToast('Instituição criada!')
+      } catch {
+        this.showToast('Erro de conexão.', true)
+      }
+    },
+
+    selectProjectInst(sigla) {
+      this.projectForm.instituicao = sigla
+      this.projectInstSearch = sigla
+      this.showProjectInstDropdown = false
+    },
+
+    clearProjectInst() {
+      this.projectForm.instituicao = ''
+      this.projectInstSearch = ''
+    },
+
+    async createAndSelectProjectInst(sigla) {
+      try {
+        const res = await fetch('/api/institutions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sigla })
+        })
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao criar instituição', true); return }
+        this.institutionListAll.push(body)
+        this.selectProjectInst(body.sigla)
+        this.showToast('Instituição criada!')
+      } catch {
+        this.showToast('Erro de conexão.', true)
       }
     },
 

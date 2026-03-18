@@ -49,6 +49,8 @@ function app() {
     participantFormErrors: {},
     participantFormLoading: false,
     showParticipantForm: false,
+    participantInstSearch: '',
+    showParticipantInstDropdown: false,
 
     get filteredParticipantList() {
       const q = this.filterInstituicao.toLowerCase()
@@ -130,6 +132,8 @@ function app() {
     projectFormErrors: {},
     projectFormLoading: false,
     showProjectForm: false,
+    projectInstSearch: '',
+    showProjectInstDropdown: false,
 
     // Institutions list (tab)
     institutionListLoading: false,
@@ -166,6 +170,36 @@ function app() {
         if (!q) return true
         return i.sigla.toLowerCase().includes(q) || (i.nome && i.nome.toLowerCase().includes(q))
       })
+    },
+
+    get filteredParticipantInstOptions() {
+      const q = this.participantInstSearch.toLowerCase().trim()
+      if (!q) return this.institutionListAll.slice(0, 50)
+      return this.institutionListAll.filter(i =>
+        i.sigla.toLowerCase().includes(q) || (i.nome && i.nome.toLowerCase().includes(q))
+      )
+    },
+
+    get showParticipantInstCreateOption() {
+      const q = this.participantInstSearch.trim()
+      return q.length > 0 && !this.institutionListAll.some(
+        i => i.sigla.toLowerCase() === q.toLowerCase()
+      )
+    },
+
+    get filteredProjectInstOptions() {
+      const q = this.projectInstSearch.toLowerCase().trim()
+      if (!q) return this.institutionListAll.slice(0, 50)
+      return this.institutionListAll.filter(i =>
+        i.sigla.toLowerCase().includes(q) || (i.nome && i.nome.toLowerCase().includes(q))
+      )
+    },
+
+    get showProjectInstCreateOption() {
+      const q = this.projectInstSearch.trim()
+      return q.length > 0 && !this.institutionListAll.some(
+        i => i.sigla.toLowerCase() === q.toLowerCase()
+      )
     },
 
     get filteredProjectList() {

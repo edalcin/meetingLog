@@ -107,6 +107,11 @@ meetings.get('/:id', async (c) => {
     [id]
   )
 
+  const [paRows] = await pool.query(
+    'SELECT id, texto, ordem FROM pauta WHERE reuniao_id = ? ORDER BY ordem ASC',
+    [id]
+  )
+
   const projetos = prRows.map(pr => ({ ...pr, ativo: Boolean(pr.ativo) }))
 
   return c.json({
@@ -116,7 +121,8 @@ meetings.get('/:id', async (c) => {
     participantes_nomes: pRows.map(p => p.nome).join(', '),
     projetos,
     projeto_ids: projetos.map(pr => pr.id),
-    projeto_nomes: projetos.map(pr => pr.nome).join(', ')
+    projeto_nomes: projetos.map(pr => pr.nome).join(', '),
+    pautas: paRows
   })
 })
 
@@ -128,7 +134,7 @@ meetings.post('/', async (c) => {
     return c.json({ error: 'Validation failed', fields: errors }, 400)
   }
 
-  const { data_hora, tipo, participante_ids, projeto_ids = [] } = body
+  const { data_hora, tipo, participante_ids, projeto_ids = [], pautas = [] } = body
 
   const conn = await pool.getConnection()
   try {
@@ -154,6 +160,14 @@ meetings.post('/', async (c) => {
       )
     }
 
+    const pautaTextos = pautas.map(p => (typeof p === 'string' ? p : p.texto ?? '')).filter(t => t.trim())
+    for (let i = 0; i < pautaTextos.length; i++) {
+      await conn.query(
+        'INSERT INTO pauta (reuniao_id, texto, ordem) VALUES (?, ?, ?)',
+        [reuniaoId, pautaTextos[i].trim(), i]
+      )
+    }
+
     await conn.commit()
 
     const [[created]] = await conn.query(
@@ -176,6 +190,10 @@ meetings.post('/', async (c) => {
        ORDER BY pr.nome`,
       [reuniaoId]
     )
+    const [paRows] = await conn.query(
+      'SELECT id, texto, ordem FROM pauta WHERE reuniao_id = ? ORDER BY ordem ASC',
+      [reuniaoId]
+    )
 
     const projetos = prRows.map(pr => ({ ...pr, ativo: Boolean(pr.ativo) }))
 
@@ -186,7 +204,8 @@ meetings.post('/', async (c) => {
       participantes_nomes: pRows.map(p => p.nome).join(', '),
       projetos,
       projeto_ids: projetos.map(pr => pr.id),
-      projeto_nomes: projetos.map(pr => pr.nome).join(', ')
+      projeto_nomes: projetos.map(pr => pr.nome).join(', '),
+      pautas: paRows
     }, 201)
   } catch (err) {
     await conn.rollback()
@@ -208,7 +227,7 @@ meetings.put('/:id', async (c) => {
     return c.json({ error: 'Validation failed', fields: errors }, 400)
   }
 
-  const { data_hora, tipo, participante_ids, projeto_ids = [] } = body
+  const { data_hora, tipo, participante_ids, projeto_ids = [], pautas = [] } = body
 
   const conn = await pool.getConnection()
   try {
@@ -237,6 +256,16 @@ meetings.put('/:id', async (c) => {
       )
     }
 
+    await conn.query('DELETE FROM pauta WHERE reuniao_id = ?', [id])
+
+    const pautaTextos = pautas.map(p => (typeof p === 'string' ? p : p.texto ?? '')).filter(t => t.trim())
+    for (let i = 0; i < pautaTextos.length; i++) {
+      await conn.query(
+        'INSERT INTO pauta (reuniao_id, texto, ordem) VALUES (?, ?, ?)',
+        [id, pautaTextos[i].trim(), i]
+      )
+    }
+
     await conn.commit()
 
     const [[updated]] = await conn.query(
@@ -259,6 +288,10 @@ meetings.put('/:id', async (c) => {
        ORDER BY pr.nome`,
       [id]
     )
+    const [paRows] = await conn.query(
+      'SELECT id, texto, ordem FROM pauta WHERE reuniao_id = ? ORDER BY ordem ASC',
+      [id]
+    )
 
     const projetos = prRows.map(pr => ({ ...pr, ativo: Boolean(pr.ativo) }))
 
@@ -269,7 +302,8 @@ meetings.put('/:id', async (c) => {
       participantes_nomes: pRows.map(p => p.nome).join(', '),
       projetos,
       projeto_ids: projetos.map(pr => pr.id),
-      projeto_nomes: projetos.map(pr => pr.nome).join(', ')
+      projeto_nomes: projetos.map(pr => pr.nome).join(', '),
+      pautas: paRows
     })
   } catch (err) {
     await conn.rollback()

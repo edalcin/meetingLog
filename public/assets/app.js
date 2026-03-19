@@ -32,6 +32,8 @@ function app() {
     formLoading: false,
     formData: { data: '', hora: '', tipo: '' },
     formErrors: {},
+    pautas: [],
+    novaPauta: '',
 
     // Participants list (tab)
     participantListLoading: false,
@@ -519,6 +521,33 @@ function app() {
       })
     },
 
+    async loadMeetingPautas(id) {
+      try {
+        const res = await fetch(`/api/meetings/${id}`)
+        if (!res.ok) return
+        const data = await res.json()
+        this.pautas = (data.pautas || []).map(p => ({ ...p, editando: false }))
+      } catch {
+        this.pautas = []
+      }
+    },
+
+    addPauta() {
+      const texto = this.novaPauta.trim()
+      if (!texto) return
+      this.pautas.push({ texto, ordem: this.pautas.length, editando: false })
+      this.novaPauta = ''
+    },
+
+    removePauta(index) {
+      this.pautas.splice(index, 1)
+      this.pautas.forEach((p, i) => { p.ordem = i })
+    },
+
+    toggleEditPauta(index) {
+      this.pautas[index].editando = !this.pautas[index].editando
+    },
+
     async openForm() {
       this.editingId = null
       this.formData = { data: '', hora: '', tipo: '' }
@@ -529,6 +558,8 @@ function app() {
       this.selectedProjectIds = new Set()
       this.projectSearchQuery = ''
       this.showProjectDropdown = false
+      this.pautas = []
+      this.novaPauta = ''
       this.showForm = true
       await this.loadParticipants()
       await this.loadProjects()
@@ -548,11 +579,14 @@ function app() {
       this.showParticipantDropdown = false
       this.projectSearchQuery = ''
       this.showProjectDropdown = false
+      this.pautas = []
+      this.novaPauta = ''
       this.showForm = true
       await this.loadParticipants()
       await this.loadProjects()
       this.selectedParticipantIds = new Set(m.participante_ids || [])
       this.selectedProjectIds = new Set(m.projeto_ids || [])
+      await this.loadMeetingPautas(m.id)
     },
 
     cancelForm() {
@@ -565,6 +599,8 @@ function app() {
       this.selectedProjectIds = new Set()
       this.projectSearchQuery = ''
       this.showProjectDropdown = false
+      this.pautas = []
+      this.novaPauta = ''
     },
 
     async saveMeeting() {
@@ -576,7 +612,8 @@ function app() {
         data_hora,
         tipo: this.formData.tipo,
         participante_ids: Array.from(this.selectedParticipantIds),
-        projeto_ids: Array.from(this.selectedProjectIds)
+        projeto_ids: Array.from(this.selectedProjectIds),
+        pautas: this.pautas.map(p => p.texto)
       }
 
       this.formLoading = true

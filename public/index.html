@@ -744,7 +744,7 @@
               </div>
 
               <!-- Search + dropdown trigger -->
-              <div class="relative">
+              <div class="relative" @click.away="showParticipantDropdown = false">
                 <input
                   x-model="participantSearch"
                   type="text"
@@ -760,7 +760,6 @@
 
                 <!-- Dropdown list -->
                 <div x-show="showParticipantDropdown"
-                     @click.away="showParticipantDropdown = false"
                      class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
 
                   <div x-show="filteredParticipants.length === 0 && !showCreateOption"
@@ -818,7 +817,7 @@
               </div>
 
               <!-- Search + dropdown trigger -->
-              <div class="relative">
+              <div class="relative" @click.away="showProjectDropdown = false">
                 <input
                   x-model="projectSearchQuery"
                   type="text"
@@ -832,7 +831,6 @@
 
                 <!-- Dropdown list -->
                 <div x-show="showProjectDropdown"
-                     @click.away="showProjectDropdown = false"
                      class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
 
                   <div x-show="filteredProjects.length === 0"
@@ -910,7 +908,7 @@
               </div>
 
               <!-- Search input + dropdown -->
-              <div class="relative">
+              <div class="relative" @click.away="showParticipantInstDropdown = false">
                 <input
                   x-model="participantInstSearch"
                   type="text"
@@ -923,7 +921,6 @@
                 />
 
                 <div x-show="showParticipantInstDropdown"
-                     @click.away="showParticipantInstDropdown = false"
                      class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
 
                   <div x-show="filteredParticipantInstOptions.length === 0 && !showParticipantInstCreateOption"
@@ -1010,7 +1007,7 @@
               </div>
 
               <!-- Search input + dropdown -->
-              <div class="relative">
+              <div class="relative" @click.away="showProjectInstDropdown = false">
                 <input
                   x-model="projectInstSearch"
                   type="text"
@@ -1023,7 +1020,6 @@
                 />
 
                 <div x-show="showProjectInstDropdown"
-                     @click.away="showProjectInstDropdown = false"
                      class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
 
                   <div x-show="filteredProjectInstOptions.length === 0 && !showProjectInstCreateOption"

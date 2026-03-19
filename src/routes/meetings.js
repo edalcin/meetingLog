@@ -84,7 +84,7 @@ meetings.get('/', async (c) => {
 meetings.get('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const [[row]] = await pool.query(
-    'SELECT id, data_hora, tipo, criado_em, atualizado_em FROM reuniao WHERE id = ?',
+    'SELECT id, data_hora, tipo, notas, criado_em, atualizado_em FROM reuniao WHERE id = ?',
     [id]
   )
   if (!row) return c.json({ error: 'Reunião não encontrada' }, 404)
@@ -134,15 +134,15 @@ meetings.post('/', async (c) => {
     return c.json({ error: 'Validation failed', fields: errors }, 400)
   }
 
-  const { data_hora, tipo, participante_ids, projeto_ids = [], pautas = [] } = body
+  const { data_hora, tipo, notas = null, participante_ids, projeto_ids = [], pautas = [] } = body
 
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
 
     const [result] = await conn.query(
-      'INSERT INTO reuniao (data_hora, tipo) VALUES (?, ?)',
-      [data_hora, tipo]
+      'INSERT INTO reuniao (data_hora, tipo, notas) VALUES (?, ?, ?)',
+      [data_hora, tipo, notas]
     )
     const reuniaoId = result.insertId
 
@@ -171,7 +171,7 @@ meetings.post('/', async (c) => {
     await conn.commit()
 
     const [[created]] = await conn.query(
-      'SELECT id, data_hora, tipo, criado_em, atualizado_em FROM reuniao WHERE id = ?',
+      'SELECT id, data_hora, tipo, notas, criado_em, atualizado_em FROM reuniao WHERE id = ?',
       [reuniaoId]
     )
     const [pRows] = await conn.query(
@@ -227,15 +227,15 @@ meetings.put('/:id', async (c) => {
     return c.json({ error: 'Validation failed', fields: errors }, 400)
   }
 
-  const { data_hora, tipo, participante_ids, projeto_ids = [], pautas = [] } = body
+  const { data_hora, tipo, notas = null, participante_ids, projeto_ids = [], pautas = [] } = body
 
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
 
     await conn.query(
-      'UPDATE reuniao SET data_hora = ?, tipo = ? WHERE id = ?',
-      [data_hora, tipo, id]
+      'UPDATE reuniao SET data_hora = ?, tipo = ?, notas = ? WHERE id = ?',
+      [data_hora, tipo, notas, id]
     )
 
     await conn.query('DELETE FROM reuniao_participante WHERE reuniao_id = ?', [id])
@@ -269,7 +269,7 @@ meetings.put('/:id', async (c) => {
     await conn.commit()
 
     const [[updated]] = await conn.query(
-      'SELECT id, data_hora, tipo, criado_em, atualizado_em FROM reuniao WHERE id = ?',
+      'SELECT id, data_hora, tipo, notas, criado_em, atualizado_em FROM reuniao WHERE id = ?',
       [id]
     )
     const [pRows] = await conn.query(

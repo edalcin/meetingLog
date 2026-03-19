@@ -30,7 +30,7 @@ function app() {
     showForm: false,
     editingId: null,
     formLoading: false,
-    formData: { data: '', hora: '', tipo: '' },
+    formData: { data: '', hora: '', tipo: '', notas: '' },
     formErrors: {},
     pautas: [],
     novaPauta: '',
@@ -555,7 +555,7 @@ function app() {
 
     async openForm() {
       this.editingId = null
-      this.formData = { data: '', hora: '', tipo: '' }
+      this.formData = { data: '', hora: '', tipo: '', notas: '' }
       this.formErrors = {}
       this.selectedParticipantIds = new Set()
       this.participantSearch = ''
@@ -577,7 +577,8 @@ function app() {
       this.formData = {
         data: `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`,
         hora: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
-        tipo: m.tipo
+        tipo: m.tipo,
+        notas: m.notas ?? ''
       }
       this.formErrors = {}
       this.participantSearch = ''
@@ -616,6 +617,7 @@ function app() {
       const payload = {
         data_hora,
         tipo: this.formData.tipo,
+        notas: this.formData.notas || null,
         participante_ids: Array.from(this.selectedParticipantIds),
         projeto_ids: Array.from(this.selectedProjectIds),
         pautas: this.pautas.map(p => p.texto)
@@ -943,6 +945,44 @@ function app() {
       } catch {
         this.showToast('Erro de conexão.', true)
       }
+    },
+
+    notasToHtml(text) {
+      if (!text) return ''
+      const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      const lines = text.split('\n')
+      const parts = []
+      let inTopUl = false
+      let inNestedUl = false
+
+      const closeNested = () => { if (inNestedUl) { parts.push('</ul>'); inNestedUl = false } }
+      const closeTop = () => { closeNested(); if (inTopUl) { parts.push('</ul>'); inTopUl = false } }
+
+      for (const raw of lines) {
+        const line = raw.trimEnd()
+
+        if (/^#{1,4}\s/.test(line)) {
+          closeTop()
+          const level = line.match(/^(#{1,4})\s/)[1].length
+          const content = escape(line.replace(/^#{1,4}\s+/, ''))
+          parts.push(`<h${level} class="font-semibold text-gray-800 mt-3 mb-1">${content}</h${level}>`)
+        } else if (/^ {2,}- /.test(line)) {
+          if (!inTopUl) { parts.push('<ul class="list-disc pl-4 space-y-0.5 text-sm text-gray-700">'); inTopUl = true }
+          if (!inNestedUl) { parts.push('<ul class="list-disc pl-4 space-y-0.5">'); inNestedUl = true }
+          parts.push(`<li>${escape(line.replace(/^ +- /, ''))}</li>`)
+        } else if (/^- /.test(line)) {
+          closeNested()
+          if (!inTopUl) { parts.push('<ul class="list-disc pl-4 space-y-0.5 text-sm text-gray-700">'); inTopUl = true }
+          parts.push(`<li>${escape(line.replace(/^- /, ''))}</li>`)
+        } else if (line === '') {
+          closeTop()
+        } else {
+          closeTop()
+          parts.push(`<p class="text-sm text-gray-700 my-1">${escape(line)}</p>`)
+        }
+      }
+      closeTop()
+      return parts.join('')
     },
 
     showToast(message, error = false) {

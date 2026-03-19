@@ -248,6 +248,11 @@ function app() {
       })
     },
 
+    // Meeting info modal (read-only "Ficha da Reunião")
+    showMeetingInfo: false,
+    meetingInfo: null,
+    meetingInfoLoading: false,
+
     // Toast
     toast: { show: false, message: '', error: false },
 
@@ -643,6 +648,30 @@ function app() {
       } finally {
         this.formLoading = false
       }
+    },
+
+    async openMeetingInfo(id) {
+      this.meetingInfoLoading = true
+      this.showMeetingInfo = true
+      try {
+        const res = await fetch(`/api/meetings/${id}`)
+        if (!res.ok) throw new Error()
+        this.meetingInfo = await res.json()
+      } catch {
+        this.showToast('Erro ao carregar reunião.', true)
+        this.showMeetingInfo = false
+      } finally {
+        this.meetingInfoLoading = false
+      }
+    },
+
+    closeMeetingInfo() {
+      this.showMeetingInfo = false
+      this.meetingInfo = null
+    },
+
+    printMeetingInfo() {
+      window.print()
     },
 
     async deleteMeeting(id) {

@@ -609,12 +609,14 @@ function app() {
 
     async editMeeting(m) {
       this.editingId = m.id
-      const dt = new Date(m.data_hora)
+      const res = await fetch(`/api/meetings/${m.id}`)
+      const full = res.ok ? await res.json() : m
+      const dt = new Date(full.data_hora)
       const pad = n => String(n).padStart(2, '0')
       this.formData = {
         data: `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`,
         hora: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
-        tipo: m.tipo
+        tipo: full.tipo
       }
       this.formErrors = {}
       this.participantSearch = ''
@@ -626,9 +628,9 @@ function app() {
       this.showForm = true
       this.$nextTick(() => {
         if (this.quillEditor) {
-          if (m.notas) {
-            try { this.quillEditor.setContents(JSON.parse(m.notas)) }
-            catch { this.quillEditor.setText(m.notas) }
+          if (full.notas) {
+            try { this.quillEditor.setContents(JSON.parse(full.notas)) }
+            catch { this.quillEditor.setText(full.notas) }
           } else {
             this.quillEditor.setContents([{ insert: '\n' }])
           }
@@ -636,9 +638,9 @@ function app() {
       })
       await this.loadParticipants()
       await this.loadProjects()
-      this.selectedParticipantIds = new Set(m.participante_ids || [])
-      this.selectedProjectIds = new Set(m.projeto_ids || [])
-      await this.loadMeetingPautas(m.id)
+      this.selectedParticipantIds = new Set(full.participante_ids || [])
+      this.selectedProjectIds = new Set(full.projeto_ids || [])
+      this.pautas = (full.pautas || []).map(p => ({ ...p, editando: false }))
     },
 
     cancelForm() {

@@ -670,17 +670,13 @@ function app() {
       }
       try {
         const parsed = JSON.parse(notas)
-        if (parsed && typeof parsed === 'object') {
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.ops)) {
           quill.setContents(this.cleanDelta(parsed))
           return
         }
-        // JSON value that is not a Delta object (e.g. a plain string)
-        const text = typeof parsed === 'string' ? parsed : notas
-        quill.clipboard.dangerouslyPasteHTML(typeof marked !== 'undefined' ? marked.parse(text) : `<p>${text}</p>`)
-      } catch {
-        // Not valid JSON — treat as plain Markdown or plain text
-        quill.clipboard.dangerouslyPasteHTML(typeof marked !== 'undefined' ? marked.parse(notas) : `<p>${notas}</p>`)
-      }
+      } catch {}
+      // Plain text fallback (non-JSON or non-Delta JSON)
+      quill.setText(typeof notas === 'string' ? notas : '')
     },
 
     async autoSaveNotas() {

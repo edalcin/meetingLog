@@ -627,14 +627,7 @@ function app() {
       this.novaPauta = ''
       this.showForm = true
       this.$nextTick(() => {
-        if (this.quillEditor) {
-          if (full.notas) {
-            try { this.quillEditor.setContents(JSON.parse(full.notas)) }
-            catch { this.quillEditor.setText(full.notas) }
-          } else {
-            this.quillEditor.setContents([{ insert: '\n' }])
-          }
-        }
+        if (this.quillEditor) this.loadNotasIntoQuill(this.quillEditor, full.notas)
       })
       await this.loadParticipants()
       await this.loadProjects()
@@ -657,6 +650,26 @@ function app() {
       this.showProjectDropdown = false
       this.pautas = []
       this.novaPauta = ''
+    },
+
+    loadNotasIntoQuill(quill, notas) {
+      if (!notas) {
+        quill.setContents([{ insert: '\n' }])
+        return
+      }
+      try {
+        const parsed = JSON.parse(notas)
+        if (parsed && typeof parsed === 'object') {
+          quill.setContents(parsed)
+          return
+        }
+        // JSON value that is not a Delta object (e.g. a plain string)
+        const text = typeof parsed === 'string' ? parsed : notas
+        quill.clipboard.dangerouslyPasteHTML(typeof marked !== 'undefined' ? marked.parse(text) : `<p>${text}</p>`)
+      } catch {
+        // Not valid JSON — treat as plain Markdown or plain text
+        quill.clipboard.dangerouslyPasteHTML(typeof marked !== 'undefined' ? marked.parse(notas) : `<p>${notas}</p>`)
+      }
     },
 
     async autoSaveNotas() {
@@ -732,12 +745,7 @@ function app() {
         if (!res.ok) throw new Error()
         this.meetingInfo = await res.json()
         this.$nextTick(() => {
-          if (this.quillViewer && this.meetingInfo.notas) {
-            try { this.quillViewer.setContents(JSON.parse(this.meetingInfo.notas)) }
-            catch { this.quillViewer.setText(this.meetingInfo.notas) }
-          } else if (this.quillViewer) {
-            this.quillViewer.setContents([{ insert: '\n' }])
-          }
+          if (this.quillViewer) this.loadNotasIntoQuill(this.quillViewer, this.meetingInfo.notas)
         })
       } catch {
         this.showToast('Erro ao carregar reunião.', true)

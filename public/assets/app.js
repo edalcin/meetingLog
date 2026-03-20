@@ -273,23 +273,27 @@ function app() {
         if (tab === 'institutions') this.loadInstitutionList()
       })
       this.$nextTick(() => {
-        this.quillEditor = new Quill('#quill-editor', {
-          theme: 'snow',
-          placeholder: 'Digite as notas da reunião...',
-          modules: {
-            toolbar: [
-              [{ header: [1, 2, 3, false] }],
-              ['bold', 'italic', 'underline'],
-              [{ list: 'ordered' }, { list: 'bullet' }],
-              ['clean']
-            ]
-          }
-        })
-        this.quillViewer = new Quill('#quill-viewer', {
-          theme: 'bubble',
-          readOnly: true,
-          modules: { toolbar: false }
-        })
+        if (!this.quillEditor) {
+          this.quillEditor = new Quill('#quill-editor', {
+            theme: 'snow',
+            placeholder: 'Digite as notas da reunião...',
+            modules: {
+              toolbar: [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['clean']
+              ]
+            }
+          })
+        }
+        if (!this.quillViewer) {
+          this.quillViewer = new Quill('#quill-viewer', {
+            theme: 'bubble',
+            readOnly: true,
+            modules: { toolbar: false }
+          })
+        }
       })
     },
 
@@ -588,7 +592,9 @@ function app() {
       this.pautas = []
       this.novaPauta = ''
       this.showForm = true
-      if (this.quillEditor) this.quillEditor.setContents([{ insert: '\n' }])
+      this.$nextTick(() => {
+        if (this.quillEditor) this.quillEditor.setContents([{ insert: '\n' }])
+      })
       await this.loadParticipants()
       await this.loadProjects()
     },
@@ -602,14 +608,6 @@ function app() {
         hora: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
         tipo: m.tipo
       }
-      if (this.quillEditor) {
-        if (m.notas) {
-          try { this.quillEditor.setContents(JSON.parse(m.notas)) }
-          catch { this.quillEditor.setText(m.notas) }
-        } else {
-          this.quillEditor.setContents([{ insert: '\n' }])
-        }
-      }
       this.formErrors = {}
       this.participantSearch = ''
       this.showParticipantDropdown = false
@@ -618,6 +616,16 @@ function app() {
       this.pautas = []
       this.novaPauta = ''
       this.showForm = true
+      this.$nextTick(() => {
+        if (this.quillEditor) {
+          if (m.notas) {
+            try { this.quillEditor.setContents(JSON.parse(m.notas)) }
+            catch { this.quillEditor.setText(m.notas) }
+          } else {
+            this.quillEditor.setContents([{ insert: '\n' }])
+          }
+        }
+      })
       await this.loadParticipants()
       await this.loadProjects()
       this.selectedParticipantIds = new Set(m.participante_ids || [])

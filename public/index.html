@@ -33,6 +33,35 @@
       .print-area, .print-area * { visibility: visible; }
       .print-area { position: absolute; left: 0; top: 0; width: 100%; }
     }
+    /* Quill editor: fill right column height */
+    #quill-editor-wrapper {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    #quill-editor-wrapper > .ql-toolbar.ql-snow {
+      flex-shrink: 0;
+      border: none;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #quill-editor-wrapper > .ql-container.ql-snow {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      border: none;
+      font-size: 0.875rem;
+    }
+    /* Quill viewer in info modal: no border, no padding */
+    #quill-viewer.ql-container.ql-bubble {
+      border: none;
+    }
+    #quill-viewer .ql-editor {
+      padding: 0;
+    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
@@ -700,10 +729,12 @@
 
       <!-- Meeting Form Modal -->
       <div x-show="showForm" x-cloak
-           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4"
+           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
            @click.self="cancelForm()">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full flex flex-col" style="max-width: 96vw; height: 92vh;">
+
+          <!-- Header -->
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
             <h2 class="text-lg font-semibold text-gray-900"
                 x-text="editingId ? 'Editar Reunião' : 'Nova Reunião'"></h2>
             <button @click="cancelForm()" class="text-gray-400 hover:text-gray-600 p-1">
@@ -713,225 +744,194 @@
             </button>
           </div>
 
-          <form @submit.prevent="saveMeeting()" class="px-6 py-4 space-y-4">
+          <!-- Two-column body + footer inside a single form -->
+          <form @submit.prevent="saveMeeting()" class="flex-1 flex flex-col min-h-0">
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Data <span class="text-red-500">*</span></label>
-                <input x-model="formData.data" type="date"
-                       class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                       :class="formErrors.data_hora ? 'border-red-400' : 'border-gray-200'" />
-                <p x-show="formErrors.data_hora" class="text-red-500 text-xs mt-1" x-text="formErrors.data_hora"></p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-red-500">*</span></label>
-                <input x-model="formData.hora" type="time"
-                       class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                       :class="formErrors.data_hora ? 'border-red-400' : 'border-gray-200'" />
-              </div>
-            </div>
+            <div class="flex-1 flex min-h-0">
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Tipo <span class="text-red-500">*</span></label>
-              <select x-model="formData.tipo"
+              <!-- Left column: form fields -->
+              <div class="flex-shrink-0 border-r border-gray-100 overflow-y-auto px-6 py-4 space-y-4" style="width: 420px;">
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Data <span class="text-red-500">*</span></label>
+                    <input x-model="formData.data" type="date"
+                           class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                           :class="formErrors.data_hora ? 'border-red-400' : 'border-gray-200'" />
+                    <p x-show="formErrors.data_hora" class="text-red-500 text-xs mt-1" x-text="formErrors.data_hora"></p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Hora <span class="text-red-500">*</span></label>
+                    <input x-model="formData.hora" type="time"
+                           class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                           :class="formErrors.data_hora ? 'border-red-400' : 'border-gray-200'" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Tipo <span class="text-red-500">*</span></label>
+                  <select x-model="formData.tipo"
+                          class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                          :class="formErrors.tipo ? 'border-red-400' : 'border-gray-200'">
+                    <option value="">Selecione...</option>
+                    <option value="Presencial">Presencial</option>
+                    <option value="Remota">Remota</option>
+                    <option value="Hibrida">Híbrida</option>
+                    <option value="Telefone">Telefone</option>
+                  </select>
+                  <p x-show="formErrors.tipo" class="text-red-500 text-xs mt-1" x-text="formErrors.tipo"></p>
+                </div>
+
+                <!-- Participantes multi-select -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Participantes <span class="text-red-500">*</span></label>
+                  <div x-show="selectedParticipantIds.size > 0" class="flex flex-wrap gap-1 mb-2">
+                    <template x-for="p in getSelectedParticipants()" :key="p.id">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        <span x-text="p.nome"></span>
+                        <button type="button" @click="toggleParticipant(p.id)"
+                                class="text-blue-500 hover:text-blue-700 leading-none">&times;</button>
+                      </span>
+                    </template>
+                  </div>
+                  <div class="relative" @click.away="showParticipantDropdown = false">
+                    <input
+                      x-model="participantSearch"
+                      type="text"
+                      placeholder="Buscar ou digitar nome para adicionar..."
+                      @focus="showParticipantDropdown = true"
+                      @input="showParticipantDropdown = true"
+                      @keydown.escape="showParticipantDropdown = false"
+                      @keydown.enter.prevent="handleParticipantEnter()"
                       class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                      :class="formErrors.tipo ? 'border-red-400' : 'border-gray-200'">
-                <option value="">Selecione...</option>
-                <option value="Presencial">Presencial</option>
-                <option value="Remota">Remota</option>
-                <option value="Hibrida">Híbrida</option>
-                <option value="Telefone">Telefone</option>
-              </select>
-              <p x-show="formErrors.tipo" class="text-red-500 text-xs mt-1" x-text="formErrors.tipo"></p>
-            </div>
-
-            <!-- Participantes multi-select -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Participantes <span class="text-red-500">*</span></label>
-
-              <!-- Selected tags -->
-              <div x-show="selectedParticipantIds.size > 0"
-                   class="flex flex-wrap gap-1 mb-2">
-                <template x-for="p in getSelectedParticipants()" :key="p.id">
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    <span x-text="p.nome"></span>
-                    <button type="button" @click="toggleParticipant(p.id)"
-                            class="text-blue-500 hover:text-blue-700 leading-none">&times;</button>
-                  </span>
-                </template>
-              </div>
-
-              <!-- Search + dropdown trigger -->
-              <div class="relative" @click.away="showParticipantDropdown = false">
-                <input
-                  x-model="participantSearch"
-                  type="text"
-                  placeholder="Buscar ou digitar nome para adicionar..."
-                  @focus="showParticipantDropdown = true"
-                  @input="showParticipantDropdown = true"
-                  @keydown.escape="showParticipantDropdown = false"
-                  @keydown.enter.prevent="handleParticipantEnter()"
-                  class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                  :class="formErrors.participante_ids ? 'border-red-400' : 'border-gray-200'"
-                  autocomplete="off"
-                />
-
-                <!-- Dropdown list -->
-                <div x-show="showParticipantDropdown"
-                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-
-                  <div x-show="filteredParticipants.length === 0 && !showCreateOption"
-                       class="px-3 py-2 text-sm text-gray-400">
-                    Nenhum participante encontrado.
-                  </div>
-
-                  <!-- Create new participant option -->
-                  <div x-show="showCreateOption"
-                       @mousedown.prevent="createAndSelectParticipant(participantSearch.trim())"
-                       class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-green-50 text-sm border-b border-gray-100">
-                    <span class="flex-shrink-0 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-xs">+</span>
-                    <span class="text-green-700">Adicionar "<span x-text="participantSearch.trim()" class="font-medium"></span>"</span>
-                  </div>
-
-                  <template x-for="p in filteredParticipants" :key="p.id">
-                    <div
-                      @mousedown.prevent="selectFromDropdown(p.id)"
-                      class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm"
-                      :class="isSelected(p.id) ? 'bg-blue-50' : ''"
-                    >
-                      <span>
-                        <span x-text="p.nome" class="font-medium text-gray-900"></span>
-                        <span x-show="p.instituicao" x-text="' · ' + p.instituicao" class="text-gray-400 text-xs"></span>
-                      </span>
+                      :class="formErrors.participante_ids ? 'border-red-400' : 'border-gray-200'"
+                      autocomplete="off"
+                    />
+                    <div x-show="showParticipantDropdown"
+                         class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+                      <div x-show="filteredParticipants.length === 0 && !showCreateOption"
+                           class="px-3 py-2 text-sm text-gray-400">Nenhum participante encontrado.</div>
+                      <div x-show="showCreateOption"
+                           @mousedown.prevent="createAndSelectParticipant(participantSearch.trim())"
+                           class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-green-50 text-sm border-b border-gray-100">
+                        <span class="flex-shrink-0 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-xs">+</span>
+                        <span class="text-green-700">Adicionar "<span x-text="participantSearch.trim()" class="font-medium"></span>"</span>
+                      </div>
+                      <template x-for="p in filteredParticipants" :key="p.id">
+                        <div @mousedown.prevent="selectFromDropdown(p.id)"
+                             class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm"
+                             :class="isSelected(p.id) ? 'bg-blue-50' : ''">
+                          <span>
+                            <span x-text="p.nome" class="font-medium text-gray-900"></span>
+                            <span x-show="p.instituicao" x-text="' · ' + p.instituicao" class="text-gray-400 text-xs"></span>
+                          </span>
+                        </div>
+                      </template>
                     </div>
-                  </template>
-                </div>
-              </div>
-
-              <p x-show="selectedParticipantIds.size > 0" class="text-xs text-gray-400 mt-1">
-                <span x-text="selectedParticipantIds.size"></span> selecionado(s)
-              </p>
-              <p x-show="formErrors.participante_ids" class="text-red-500 text-xs mt-1" x-text="formErrors.participante_ids"></p>
-            </div>
-
-            <!-- Projetos multi-select -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Projetos</label>
-
-              <!-- Selected project tags -->
-              <div x-show="selectedProjectIds.size > 0"
-                   class="flex flex-wrap gap-1 mb-2">
-                <template x-for="pr in getSelectedProjects()" :key="pr.id">
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
-                        :class="pr.ativo
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : 'bg-gray-100 text-gray-500'">
-                    <span x-text="pr.ativo ? pr.nome : pr.nome + ' (inativo)'"></span>
-                    <button type="button" @click="removeProject(pr.id)"
-                            class="leading-none"
-                            :class="pr.ativo ? 'text-indigo-500 hover:text-indigo-700' : 'text-gray-400 hover:text-gray-600'">&times;</button>
-                  </span>
-                </template>
-              </div>
-
-              <!-- Search + dropdown trigger -->
-              <div class="relative" @click.away="showProjectDropdown = false">
-                <input
-                  x-model="projectSearchQuery"
-                  type="text"
-                  placeholder="Buscar projeto para adicionar..."
-                  @focus="showProjectDropdown = true"
-                  @input="showProjectDropdown = true"
-                  @keydown.escape="showProjectDropdown = false"
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
-                  autocomplete="off"
-                />
-
-                <!-- Dropdown list -->
-                <div x-show="showProjectDropdown"
-                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-
-                  <div x-show="filteredProjects.length === 0"
-                       class="px-3 py-2 text-sm text-gray-400">
-                    Nenhum projeto ativo disponível.
                   </div>
+                  <p x-show="selectedParticipantIds.size > 0" class="text-xs text-gray-400 mt-1">
+                    <span x-text="selectedParticipantIds.size"></span> selecionado(s)
+                  </p>
+                  <p x-show="formErrors.participante_ids" class="text-red-500 text-xs mt-1" x-text="formErrors.participante_ids"></p>
+                </div>
 
-                  <template x-for="pr in filteredProjects" :key="pr.id">
-                    <div
-                      @mousedown.prevent="selectProjectFromDropdown(pr.id)"
-                      class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
-                      <span>
-                        <span x-text="pr.nome" class="font-medium text-gray-900"></span>
-                        <span x-show="pr.instituicao" x-text="' · ' + pr.instituicao" class="text-gray-400 text-xs"></span>
+                <!-- Projetos multi-select -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Projetos</label>
+                  <div x-show="selectedProjectIds.size > 0" class="flex flex-wrap gap-1 mb-2">
+                    <template x-for="pr in getSelectedProjects()" :key="pr.id">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
+                            :class="pr.ativo ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-500'">
+                        <span x-text="pr.ativo ? pr.nome : pr.nome + ' (inativo)'"></span>
+                        <button type="button" @click="removeProject(pr.id)" class="leading-none"
+                                :class="pr.ativo ? 'text-indigo-500 hover:text-indigo-700' : 'text-gray-400 hover:text-gray-600'">&times;</button>
                       </span>
-                    </div>
-                  </template>
-                </div>
-              </div>
-
-              <p x-show="selectedProjectIds.size > 0" class="text-xs text-gray-400 mt-1">
-                <span x-text="selectedProjectIds.size"></span> selecionado(s)
-              </p>
-              <p x-show="formErrors.projeto_ids" class="text-red-500 text-xs mt-1" x-text="formErrors.projeto_ids"></p>
-            </div>
-
-            <!-- Pautas card -->
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Pautas</label>
-
-              <!-- Lista de pautas existentes -->
-              <div class="space-y-1">
-                <template x-for="(p, i) in pautas" :key="i">
-                  <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-                    <span class="text-xs text-gray-400 w-5 shrink-0" x-text="i + 1 + '.'"></span>
-                    <span x-show="!p.editando" class="flex-1 text-sm text-gray-800 truncate" x-text="p.texto"></span>
-                    <input x-show="p.editando"
-                           x-model="p.texto"
-                           @keydown.enter.prevent="p.editando = false"
-                           @blur="p.editando = false"
-                           class="flex-1 text-sm border border-blue-300 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                           type="text" />
-                    <button type="button" @click="toggleEditPauta(i)"
-                            class="text-gray-400 hover:text-blue-600 transition-colors p-0.5 shrink-0"
-                            :title="p.editando ? 'Confirmar' : 'Editar'">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                      </svg>
-                    </button>
-                    <button type="button" @mousedown.prevent @click="removePauta(i)"
-                            class="text-gray-400 hover:text-red-600 transition-colors p-0.5 shrink-0" title="Remover">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
+                    </template>
                   </div>
-                </template>
-                <p x-show="pautas.length === 0" class="text-sm text-gray-400 italic px-1">Nenhuma pauta adicionada.</p>
-              </div>
+                  <div class="relative" @click.away="showProjectDropdown = false">
+                    <input
+                      x-model="projectSearchQuery"
+                      type="text"
+                      placeholder="Buscar projeto para adicionar..."
+                      @focus="showProjectDropdown = true"
+                      @input="showProjectDropdown = true"
+                      @keydown.escape="showProjectDropdown = false"
+                      class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                      autocomplete="off"
+                    />
+                    <div x-show="showProjectDropdown"
+                         class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+                      <div x-show="filteredProjects.length === 0" class="px-3 py-2 text-sm text-gray-400">Nenhum projeto ativo disponível.</div>
+                      <template x-for="pr in filteredProjects" :key="pr.id">
+                        <div @mousedown.prevent="selectProjectFromDropdown(pr.id)"
+                             class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
+                          <span>
+                            <span x-text="pr.nome" class="font-medium text-gray-900"></span>
+                            <span x-show="pr.instituicao" x-text="' · ' + pr.instituicao" class="text-gray-400 text-xs"></span>
+                          </span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                  <p x-show="selectedProjectIds.size > 0" class="text-xs text-gray-400 mt-1">
+                    <span x-text="selectedProjectIds.size"></span> selecionado(s)
+                  </p>
+                  <p x-show="formErrors.projeto_ids" class="text-red-500 text-xs mt-1" x-text="formErrors.projeto_ids"></p>
+                </div>
 
-              <!-- Adicionar nova pauta -->
-              <div class="flex gap-2">
-                <input x-model="novaPauta"
-                       @keydown.enter.prevent
-                       type="text"
-                       placeholder="Digite uma pauta..."
-                       class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="button" @click="addPauta()"
-                        :disabled="!novaPauta.trim()"
-                        class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors shrink-0">
-                  +
-                </button>
-              </div>
-            </div>
+                <!-- Pautas -->
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Pautas</label>
+                  <div class="space-y-1">
+                    <template x-for="(p, i) in pautas" :key="i">
+                      <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                        <span class="text-xs text-gray-400 w-5 shrink-0" x-text="i + 1 + '.'"></span>
+                        <span x-show="!p.editando" class="flex-1 text-sm text-gray-800 truncate" x-text="p.texto"></span>
+                        <input x-show="p.editando" x-model="p.texto"
+                               @keydown.enter.prevent="p.editando = false" @blur="p.editando = false"
+                               class="flex-1 text-sm border border-blue-300 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                               type="text" />
+                        <button type="button" @click="toggleEditPauta(i)"
+                                class="text-gray-400 hover:text-blue-600 transition-colors p-0.5 shrink-0"
+                                :title="p.editando ? 'Confirmar' : 'Editar'">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                          </svg>
+                        </button>
+                        <button type="button" @mousedown.prevent @click="removePauta(i)"
+                                class="text-gray-400 hover:text-red-600 transition-colors p-0.5 shrink-0" title="Remover">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </template>
+                    <p x-show="pautas.length === 0" class="text-sm text-gray-400 italic px-1">Nenhuma pauta adicionada.</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <input x-model="novaPauta" @keydown.enter.prevent type="text"
+                           placeholder="Digite uma pauta..."
+                           class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button type="button" @click="addPauta()" :disabled="!novaPauta.trim()"
+                            class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors shrink-0">+</button>
+                  </div>
+                </div>
 
-            <!-- Notas card -->
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-              <div id="quill-editor" style="min-height: 180px;"></div>
-            </div>
+              </div><!-- /left column -->
 
-            <div class="flex gap-3 pt-2">
+              <!-- Right column: Quill notes editor -->
+              <div class="flex-1 flex flex-col px-6 py-4 min-w-0">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notas</label>
+                <div id="quill-editor-wrapper">
+                  <div id="quill-editor"></div>
+                </div>
+              </div><!-- /right column -->
+
+            </div><!-- /two-column body -->
+
+            <!-- Footer buttons -->
+            <div class="flex-shrink-0 border-t border-gray-200 px-6 py-4 flex gap-3">
               <button type="button" @click="cancelForm()"
                       class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                 Cancelar

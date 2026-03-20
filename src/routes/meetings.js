@@ -313,6 +313,16 @@ meetings.put('/:id', async (c) => {
   }
 })
 
+// PATCH /api/meetings/:id/notas  (auto-save)
+meetings.patch('/:id/notas', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const { notas = null } = await c.req.json()
+  const [result] = await pool.query('UPDATE reuniao SET notas = ? WHERE id = ?', [notas, id])
+  if (result.affectedRows === 0) return c.json({ error: 'Reunião não encontrada' }, 404)
+  return c.json({ ok: true })
+})
+
 // DELETE /api/meetings/:id
 meetings.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))

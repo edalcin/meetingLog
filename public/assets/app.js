@@ -258,6 +258,8 @@ function app() {
 
     quillEditor: null,
     quillViewer: null,
+    autoSaveStatus: '',   // '', 'saving', 'saved', 'error'
+    autoSaveTimer: null,
 
     init() {
       if (sessionStorage.getItem('pin_ok') === '1') {
@@ -285,6 +287,12 @@ function app() {
                 ['clean']
               ]
             }
+          })
+          this.quillEditor.on('text-change', (delta, old, source) => {
+            if (source !== 'user' || !this.editingId) return
+            clearTimeout(this.autoSaveTimer)
+            this.autoSaveStatus = 'saving'
+            this.autoSaveTimer = setTimeout(() => this.autoSaveNotas(), 2000)
           })
         }
         if (!this.quillViewer) {
@@ -634,6 +642,8 @@ function app() {
     },
 
     cancelForm() {
+      clearTimeout(this.autoSaveTimer)
+      this.autoSaveStatus = ''
       this.showForm = false
       this.editingId = null
       this.formErrors = {}
@@ -645,6 +655,22 @@ function app() {
       this.showProjectDropdown = false
       this.pautas = []
       this.novaPauta = ''
+    },
+
+    async autoSaveNotas() {
+      if (!this.editingId || !this.quillEditor) return
+      const text = this.quillEditor.getText().trim()
+      const notas = text ? JSON.stringify(this.quillEditor.getContents()) : null
+      try {
+        const res = await fetch(`/api/meetings/${this.editingId}/notas`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notas })
+        })
+        this.autoSaveStatus = res.ok ? 'saved' : 'error'
+      } catch {
+        this.autoSaveStatus = 'error'
+      }
     },
 
     async saveMeeting() {

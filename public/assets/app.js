@@ -652,6 +652,17 @@ function app() {
       this.novaPauta = ''
     },
 
+    cleanDelta(delta) {
+      if (!delta || !Array.isArray(delta.ops)) return delta
+      return {
+        ops: delta.ops.map(op =>
+          typeof op.insert === 'string'
+            ? { ...op, insert: op.insert.replace(/\u001f/g, '') }
+            : op
+        )
+      }
+    },
+
     loadNotasIntoQuill(quill, notas) {
       if (!notas) {
         quill.setContents([{ insert: '\n' }])
@@ -660,7 +671,7 @@ function app() {
       try {
         const parsed = JSON.parse(notas)
         if (parsed && typeof parsed === 'object') {
-          quill.setContents(parsed)
+          quill.setContents(this.cleanDelta(parsed))
           return
         }
         // JSON value that is not a Delta object (e.g. a plain string)
@@ -674,8 +685,9 @@ function app() {
 
     async autoSaveNotas() {
       if (!this.editingId || !this.quillEditor) return
-      const text = this.quillEditor.getText().trim()
-      const notas = text ? JSON.stringify(this.quillEditor.getContents()) : null
+      const delta = this.cleanDelta(this.quillEditor.getContents())
+      const text = delta.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim()
+      const notas = text ? JSON.stringify(delta) : null
       try {
         const res = await fetch(`/api/meetings/${this.editingId}/notas`, {
           method: 'PATCH',
@@ -695,9 +707,10 @@ function app() {
         : null
       const notasPayload = (() => {
         if (!this.quillEditor) return null
-        const text = this.quillEditor.getText().trim()
+        const delta = this.cleanDelta(this.quillEditor.getContents())
+        const text = delta.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim()
         if (!text) return null
-        return JSON.stringify(this.quillEditor.getContents())
+        return JSON.stringify(delta)
       })()
       const payload = {
         data_hora,

@@ -16,6 +16,11 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- Quill -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.bubble.css" />
+  <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
+
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -923,11 +928,7 @@
             <!-- Notas card -->
             <div class="space-y-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-              <textarea
-                x-model="formData.notas"
-                rows="8"
-                class="w-full text-sm font-mono border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                placeholder="- Item&#10;  - Sub-item&#10;#### Seção"></textarea>
+              <div id="quill-editor" style="min-height: 180px;"></div>
             </div>
 
             <div class="flex gap-3 pt-2">
@@ -1288,12 +1289,10 @@
                 </div>
 
                 <!-- Notas -->
-                <template x-if="meetingInfo.notas">
-                  <div>
-                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Notas</span>
-                    <div class="mt-2" x-html="notasToHtml(meetingInfo.notas)"></div>
-                  </div>
-                </template>
+                <div x-show="meetingInfo && meetingInfo.notas">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Notas</span>
+                  <div id="quill-viewer" class="mt-2"></div>
+                </div>
 
               </div>
             </div>

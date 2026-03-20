@@ -256,6 +256,9 @@ function app() {
     // Toast
     toast: { show: false, message: '', error: false },
 
+    quillEditor: null,
+    quillViewer: null,
+
     init() {
       if (sessionStorage.getItem('pin_ok') === '1') {
         this.authenticated = true
@@ -268,6 +271,25 @@ function app() {
         if (tab === 'projects') this.loadProjects()
         if (tab === 'participants') this.loadParticipantList()
         if (tab === 'institutions') this.loadInstitutionList()
+      })
+      this.$nextTick(() => {
+        this.quillEditor = new Quill('#quill-editor', {
+          theme: 'snow',
+          placeholder: 'Digite as notas da reunião...',
+          modules: {
+            toolbar: [
+              [{ header: [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline'],
+              [{ list: 'ordered' }, { list: 'bullet' }],
+              ['clean']
+            ]
+          }
+        })
+        this.quillViewer = new Quill('#quill-viewer', {
+          theme: 'bubble',
+          readOnly: true,
+          modules: { toolbar: false }
+        })
       })
     },
 
@@ -555,7 +577,7 @@ function app() {
 
     async openForm() {
       this.editingId = null
-      this.formData = { data: '', hora: '', tipo: '', notas: '' }
+      this.formData = { data: '', hora: '', tipo: '' }
       this.formErrors = {}
       this.selectedParticipantIds = new Set()
       this.participantSearch = ''
@@ -566,6 +588,7 @@ function app() {
       this.pautas = []
       this.novaPauta = ''
       this.showForm = true
+      if (this.quillEditor) this.quillEditor.setContents([{ insert: '\n' }])
       await this.loadParticipants()
       await this.loadProjects()
     },
@@ -577,8 +600,15 @@ function app() {
       this.formData = {
         data: `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`,
         hora: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`,
-        tipo: m.tipo,
-        notas: m.notas ?? ''
+        tipo: m.tipo
+      }
+      if (this.quillEditor) {
+        if (m.notas) {
+          try { this.quillEditor.setContents(JSON.parse(m.notas)) }
+          catch { this.quillEditor.setText(m.notas) }
+        } else {
+          this.quillEditor.setContents([{ insert: '\n' }])
+        }
       }
       this.formErrors = {}
       this.participantSearch = ''
@@ -614,10 +644,16 @@ function app() {
       const data_hora = this.formData.data && this.formData.hora
         ? `${this.formData.data}T${this.formData.hora}:00`
         : null
+      const notasPayload = (() => {
+        if (!this.quillEditor) return null
+        const text = this.quillEditor.getText().trim()
+        if (!text) return null
+        return JSON.stringify(this.quillEditor.getContents())
+      })()
       const payload = {
         data_hora,
         tipo: this.formData.tipo,
-        notas: this.formData.notas || null,
+        notas: notasPayload,
         participante_ids: Array.from(this.selectedParticipantIds),
         projeto_ids: Array.from(this.selectedProjectIds),
         pautas: this.pautas.map(p => p.texto)
@@ -659,6 +695,14 @@ function app() {
         const res = await fetch(`/api/meetings/${id}`)
         if (!res.ok) throw new Error()
         this.meetingInfo = await res.json()
+        this.$nextTick(() => {
+          if (this.quillViewer && this.meetingInfo.notas) {
+            try { this.quillViewer.setContents(JSON.parse(this.meetingInfo.notas)) }
+            catch { this.quillViewer.setText(this.meetingInfo.notas) }
+          } else if (this.quillViewer) {
+            this.quillViewer.setContents([{ insert: '\n' }])
+          }
+        })
       } catch {
         this.showToast('Erro ao carregar reunião.', true)
         this.showMeetingInfo = false
@@ -945,44 +989,6 @@ function app() {
       } catch {
         this.showToast('Erro de conexão.', true)
       }
-    },
-
-    notasToHtml(text) {
-      if (!text) return ''
-      const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-      const lines = text.split('\n')
-      const parts = []
-      let inTopUl = false
-      let inNestedUl = false
-
-      const closeNested = () => { if (inNestedUl) { parts.push('</ul>'); inNestedUl = false } }
-      const closeTop = () => { closeNested(); if (inTopUl) { parts.push('</ul>'); inTopUl = false } }
-
-      for (const raw of lines) {
-        const line = raw.trimEnd()
-
-        if (/^#{1,4}\s/.test(line)) {
-          closeTop()
-          const level = line.match(/^(#{1,4})\s/)[1].length
-          const content = escape(line.replace(/^#{1,4}\s+/, ''))
-          parts.push(`<h${level} class="font-semibold text-gray-800 mt-3 mb-1">${content}</h${level}>`)
-        } else if (/^ {2,}- /.test(line)) {
-          if (!inTopUl) { parts.push('<ul class="list-disc pl-4 space-y-0.5 text-sm text-gray-700">'); inTopUl = true }
-          if (!inNestedUl) { parts.push('<ul class="list-disc pl-4 space-y-0.5">'); inNestedUl = true }
-          parts.push(`<li>${escape(line.replace(/^ +- /, ''))}</li>`)
-        } else if (/^- /.test(line)) {
-          closeNested()
-          if (!inTopUl) { parts.push('<ul class="list-disc pl-4 space-y-0.5 text-sm text-gray-700">'); inTopUl = true }
-          parts.push(`<li>${escape(line.replace(/^- /, ''))}</li>`)
-        } else if (line === '') {
-          closeTop()
-        } else {
-          closeTop()
-          parts.push(`<p class="text-sm text-gray-700 my-1">${escape(line)}</p>`)
-        }
-      }
-      closeTop()
-      return parts.join('')
     },
 
     showToast(message, error = false) {

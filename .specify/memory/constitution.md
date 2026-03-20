@@ -12,7 +12,7 @@ O frontend usa Alpine.js CDN e Tailwind CSS CDN. **Nunca** introduzir bundler (W
 **Nunca** interpolar variáveis em strings SQL. Usar sempre `?` com array de parâmetros via `mysql2/promise`. Esta regra é inegociável — sem exceções.
 
 ### I.4 — Credenciais Nunca no Repositório Remoto
-Scripts com credenciais de admin ficam em `docs/source/scripts/` que está no `.gitignore` e no `.dockerignore`. O banco de dados de produção está em `DB_HOST:3333` / database `reunioes`. Credenciais root: ver scripts locais. Credenciais da aplicação: `.env` local (nunca commitado).
+Scripts com credenciais de admin ficam em `docs/source/scripts/` que está no `.gitignore` e no `.dockerignore`. Credenciais root: ver scripts locais (nunca commitados). Credenciais da aplicação: `.env` local (nunca commitado).
 
 ### I.5 — Migrações são Imutáveis e Sequenciais
 Arquivos em `migrations/` são commitados, nunca editados após aplicados. O runner (`npm run migrate`) aplica cada arquivo apenas uma vez (controle via `schema_migrations`). Nomenclatura: `NNN_descricao.sql` (zero-padded).
@@ -145,7 +145,7 @@ Nomenclatura sequencial:
 
 ## V. Banco de Dados de Produção
 
-- **Host**: `DB_HOST:3333`
+- **Host**: configurado via variáveis de ambiente (`DB_HOST`, `DB_PORT`)
 - **Database**: `reunioes`
 - **Engine**: MariaDB
 - **Charset**: `utf8mb4` (obrigatório para suporte a acentos e emoji)

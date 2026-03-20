@@ -22,7 +22,7 @@
 
 - [X] T001 Criar migration `migrations/008_add_pauta.sql` com CREATE TABLE pauta (conforme data-model.md): campos id, reuniao_id, texto VARCHAR(1000), ordem SMALLINT, criado_em; UNIQUE KEY uq_pauta(reuniao_id, texto(500)); FK → reuniao.id ON DELETE CASCADE
 - [X] T002 Aplicar migration no banco de produção: `npm run migrate` (aplica apenas 008_add_pauta.sql; verificar com `SHOW TABLES LIKE 'pauta'` e `DESCRIBE pauta`)
-- [X] T003 [P] Criar script `docs/source/scripts/migrate-pautas.js` com: conexão root ao MariaDB (DB_HOST:3333/reunioes), leitura do CSV `docs/source/memoriaReunioes-Pauta.csv` (separador `;`), normalização de timezone (-03:00 → UTC), lookup de reuniao_id via `DATE_FORMAT(data_hora,'%Y-%m-%dT%H:%i:%s')`, INSERT IGNORE INTO pauta(reuniao_id, texto, ordem), log de registros ignorados e resumo final
+- [X] T003 [P] Criar script `docs/source/scripts/migrate-pautas.js` com: conexão ao MariaDB via variáveis de ambiente (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD), leitura do CSV `docs/source/memoriaReunioes-Pauta.csv` (separador `;`), normalização de timezone (-03:00 → UTC), lookup de reuniao_id via `DATE_FORMAT(data_hora,'%Y-%m-%dT%H:%i:%s')`, INSERT IGNORE INTO pauta(reuniao_id, texto, ordem), log de registros ignorados e resumo final
 - [X] T004 Executar script de migração: `node docs/source/scripts/migrate-pautas.js` e verificar com `SELECT COUNT(*) FROM pauta` e amostra de 20 registros
 
 **Checkpoint**: Tabela `pauta` criada e populada com dados históricos. Verificar idempotência executando T004 uma segunda vez (contagem não deve mudar).

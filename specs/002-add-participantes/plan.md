@@ -81,7 +81,7 @@ docs/source/scripts/                 # NUNCA commitado (.gitignore)
 ### Phase 2 — Script de Dados (não commitado)
 
 1. Criar `docs/source/scripts/migrate-participantes.js`:
-   - Conecta com `root` / `***REMOVED***`
+   - Conecta com credenciais via variáveis de ambiente (DB_USER / DB_PASSWORD)
    - INSERT IGNORE de todos os participantes do CSV
    - Percorre `reuniao`, tokeniza `participantes` TEXT, busca por nome exato, insere em `reuniao_participante`
    - Log de nomes sem correspondência

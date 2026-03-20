@@ -15,7 +15,7 @@ Adicionar a entidade `pauta` (item de agenda) ao sistema, com relação 1:N à t
 
 **Language/Version**: Node.js 22, ES modules
 **Primary Dependencies**: Hono (web framework), mysql2/promise (MariaDB driver), Alpine.js CDN, Tailwind CSS CDN
-**Storage**: MariaDB — host `DB_HOST:3333`, database `reunioes`
+**Storage**: MariaDB — host configurado via `DB_HOST`/`DB_PORT`, database `reunioes`
 **Testing**: Manual (aplicação single-user, sem suite de testes automatizados)
 **Target Platform**: Docker container em UNRAID (Linux)
 **Project Type**: Web application (backend API + frontend SPA)

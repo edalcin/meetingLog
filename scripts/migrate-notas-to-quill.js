@@ -6,11 +6,11 @@
 import mysql from 'mysql2/promise'
 
 const DB = {
-  host: 'DB_HOST',
-  port: 3333,
-  database: 'reunioes',
-  user: 'root',
-  password: '***REMOVED***'
+  host:     process.env.DB_HOST     ?? 'localhost',
+  port:     Number(process.env.DB_PORT     ?? 3306),
+  database: process.env.DB_NAME     ?? 'reunioes',
+  user:     process.env.DB_USER     ?? 'root',
+  password: process.env.DB_PASSWORD ?? '',
 }
 
 function textToDelta(text) {

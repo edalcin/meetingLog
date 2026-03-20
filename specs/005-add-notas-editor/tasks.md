@@ -29,8 +29,8 @@
 **⚠️ CRITICAL**: All user story work depends on T002 and T004 being complete.
 
 - [x] T002 Create `migrations/009_add_notas.sql` with `ALTER TABLE reuniao ADD COLUMN notas TEXT NULL AFTER tipo;`
-- [x] T003 Apply migration: run `npm run migrate` (applies `009_add_notas.sql` to production DB at DB_HOST:3333)
-- [x] T004 Create historical data migration script `docs/source/scripts/migrate_notas.js` — reads `docs/source/memoriaReunioes-Notas.csv` (tab-separated), matches each row by full datetime (`DATE_FORMAT(data_hora, '%Y-%m-%d %H:%i:%s')`), runs `UPDATE reuniao SET notas = ? WHERE DATE_FORMAT(data_hora, '%Y-%m-%d %H:%i:%s') = ?`, logs `✅ Updated` or `⚠️ No match` per row, skips empty `notasMD` rows; credentials hardcoded (host: DB_HOST, port: 3333, db: reunioes, user: root)
+- [x] T003 Apply migration: run `npm run migrate` (applies `009_add_notas.sql` to production DB)
+- [x] T004 Create historical data migration script `docs/source/scripts/migrate_notas.js` — reads `docs/source/memoriaReunioes-Notas.csv` (tab-separated), matches each row by full datetime (`DATE_FORMAT(data_hora, '%Y-%m-%d %H:%i:%s')`), runs `UPDATE reuniao SET notas = ? WHERE DATE_FORMAT(data_hora, '%Y-%m-%d %H:%i:%s') = ?`, logs `✅ Updated` or `⚠️ No match` per row, skips empty `notasMD` rows; credentials supplied via environment variables (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
 - [x] T005 Run historical data migration: `node docs/source/scripts/migrate_notas.js`
 
 **Checkpoint**: `notas` column exists in `reuniao` and historical notes are loaded. All user story work can now begin.

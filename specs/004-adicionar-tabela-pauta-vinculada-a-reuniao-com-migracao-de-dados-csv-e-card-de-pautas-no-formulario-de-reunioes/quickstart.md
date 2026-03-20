@@ -70,8 +70,8 @@ git push origin main
 ## Estrutura do Script de Migração
 
 **Localização**: `docs/source/scripts/migrate-pautas.js`
-**Credenciais**: hardcoded no arquivo (root / ***REMOVED***) — nunca commitado
-**Banco**: `DB_HOST:3333` / database `reunioes`
+**Credenciais**: via variáveis de ambiente (DB_USER / DB_PASSWORD) — arquivo nunca commitado
+**Banco**: host/porta via `DB_HOST`/`DB_PORT` / database `reunioes`
 
 ### Lógica do script
 
@@ -105,5 +105,5 @@ DELETE FROM schema_migrations WHERE filename = '008_add_pauta.sql';
 
 ```bash
 # Variáveis de ambiente para rodar localmente
-DB_HOST=DB_HOST DB_PORT=3333 DB_NAME=reunioes DB_USER=seu_user DB_PASSWORD=sua_senha npm run dev
+DB_HOST=<db-host> DB_PORT=<db-port> DB_NAME=reunioes DB_USER=seu_user DB_PASSWORD=sua_senha npm run dev
 ```

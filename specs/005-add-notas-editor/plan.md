@@ -97,13 +97,13 @@ Logic:
 5. Log result per row: `✅ Updated: <datetime>` or `⚠️ No match: <datetime>`
 6. Use env vars from `.env` or hardcoded root credentials (file never committed)
 
-Credentials in script (hardcoded, file is gitignored):
+Credentials in script (supplied via environment variables, file is gitignored):
 ```
-host: DB_HOST
-port: 3333
-database: reunioes
-user: root
-password: ***REMOVED***
+DB_HOST=<db-host>
+DB_PORT=<db-port>
+DB_NAME=reunioes
+DB_USER=<db-user>
+DB_PASSWORD=<db-password>
 ```
 
 Run: `node docs/source/scripts/migrate_notas.js`

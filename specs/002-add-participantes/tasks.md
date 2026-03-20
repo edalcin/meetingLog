@@ -67,7 +67,7 @@
 
 ### Implementation for User Story 2
 
-- [x] T015 [US2] Criar `docs/source/scripts/migrate-participantes.js` — Fase 1 (CSV import): conectar com mysql2 usando credenciais root (`root` / `***REMOVED***`, host/port/db de variável de ambiente ou argumento); ler `docs/source/memoriaReunioes-Participantes.csv` com separador `;`; para cada linha com nome não vazio: `INSERT IGNORE INTO participante (nome, instituicao, cargo, email) VALUES (?, ?, ?, ?)` (trim em todos os campos, NULL se vazio); exibir total de inseridos e total ignorados (já existentes)
+- [x] T015 [US2] Criar `docs/source/scripts/migrate-participantes.js` — Fase 1 (CSV import): conectar com mysql2 usando credenciais via variáveis de ambiente (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD); ler `docs/source/memoriaReunioes-Participantes.csv` com separador `;`; para cada linha com nome não vazio: `INSERT IGNORE INTO participante (nome, instituicao, cargo, email) VALUES (?, ?, ?, ?)` (trim em todos os campos, NULL se vazio); exibir total de inseridos e total ignorados (já existentes)
 
 **Checkpoint**: US2 funcional — script importa CSV e é idempotente; participantes disponíveis para seleção ✅
 

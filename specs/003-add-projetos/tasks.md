@@ -41,7 +41,7 @@
 
 ### Implementation for User Story 1
 
-- [x] T003 [US1] Create `docs/source/scripts/migrate-projetos.js` — connect to MariaDB (`DB_HOST:3333`, user root, password `***REMOVED***`), read `docs/source/memoriaReunioes-Projeto.csv` (sep `;`), INSERT IGNORE into `projeto` (convert VERDADEIRO→1/FALSO→0 for `ativo`), then read `reuniao.projeto` TEXT for each reunião, split by `,` + trim, lookup each name in `projeto` by exact nome match, INSERT IGNORE into `reuniao_projeto`, log unmatched names
+- [x] T003 [US1] Create `docs/source/scripts/migrate-projetos.js` — connect to MariaDB via environment variables (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD), read `docs/source/memoriaReunioes-Projeto.csv` (sep `;`), INSERT IGNORE into `projeto` (convert VERDADEIRO→1/FALSO→0 for `ativo`), then read `reuniao.projeto` TEXT for each reunião, split by `,` + trim, lookup each name in `projeto` by exact nome match, INSERT IGNORE into `reuniao_projeto`, log unmatched names
 - [ ] T004 [US1] Execute `npm run migrate` — applies `005_add_projetos.sql` only (006 does not exist yet); verify tables `projeto` and `reuniao_projeto` exist and `reuniao.projeto` column still present
 - [ ] T005 [US1] Execute `node docs/source/scripts/migrate-projetos.js` — verify 49 rows in `projeto` and associations in `reuniao_projeto`; review log for unmatched project names
 

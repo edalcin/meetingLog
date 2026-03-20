@@ -90,7 +90,7 @@ Executa em sequência:
 2. **Migração legada** → lê `reuniao.projeto` TEXT, split por vírgula + trim, lookup por nome exato em `projeto`, insere em `reuniao_projeto` (INSERT IGNORE)
 3. Log de nomes não associados (sem falha — padrão constituição II.4)
 
-**Credenciais**: root / `***REMOVED***` — hardcoded no script (nunca commitado)
+**Credenciais**: via variáveis de ambiente (DB_USER / DB_PASSWORD) — script nunca commitado
 
 ---
 

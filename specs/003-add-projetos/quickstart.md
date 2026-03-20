@@ -12,7 +12,7 @@
 
 ## Pré-requisitos
 
-- MariaDB disponível em `DB_HOST:3333`, database `reunioes`
+- MariaDB disponível (host/porta configurados via `DB_HOST`/`DB_PORT`), database `reunioes`
 - Node.js 22 instalado localmente
 - Arquivo `docs/source/memoriaReunioes-Projeto.csv` presente
 - Arquivo `docs/source/memoriaReunioes-Reuniao.csv` presente (para matching legado)
@@ -103,8 +103,8 @@ git push origin main
 ## Variáveis de Ambiente (aplicação)
 
 ```env
-DB_HOST=DB_HOST
-DB_PORT=3333
+DB_HOST=<db-host>
+DB_PORT=<db-port>
 DB_NAME=reunioes
 DB_USER=app_user
 DB_PASSWORD=<app_password>

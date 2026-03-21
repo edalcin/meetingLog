@@ -87,6 +87,7 @@ console.log('CSV header:', header)
 console.log('CSV rows:', data.length)
 
 const LINK_RE = /^\[(.+?)\]\s+(.+)$/
+const URL_RE = /^https?:\/\/.+/
 
 let inserted = 0, skipped = 0, notFound = 0, invalid = 0
 
@@ -97,16 +98,22 @@ for (const row of data) {
   const [dateStr, linkDoc] = row
   if (!dateStr) { skipped++; continue }
 
-  // Parse link format: [nome] url
+  // Parse link format: [nome] url  OR  plain url
   const linkDoc2 = (linkDoc || '').trim()
+  let nome, url
   const match = linkDoc2.match(LINK_RE)
-  if (!match) {
+  if (match) {
+    nome = match[1].trim()
+    url = match[2].trim()
+  } else if (URL_RE.test(linkDoc2)) {
+    // Plain URL without bracket notation — use URL as name
+    nome = linkDoc2
+    url = linkDoc2
+  } else {
     console.warn(`SKIPPED: formato inválido: "${linkDoc2}"`)
     invalid++
     continue
   }
-  const nome = match[1].trim()
-  const url = match[2].trim()
   if (!nome || !url) { invalid++; continue }
 
   const utcDate = brtToUtc(dateStr)

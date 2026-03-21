@@ -671,7 +671,21 @@ function app() {
       try {
         const parsed = JSON.parse(notas)
         if (parsed && typeof parsed === 'object' && Array.isArray(parsed.ops)) {
-          quill.setContents(this.cleanDelta(parsed))
+          const cleaned = this.cleanDelta(parsed)
+          // If all ops are plain text and contain Markdown syntax, render via marked
+          const allPlainText = cleaned.ops.every(op => typeof op.insert === 'string' && !op.attributes)
+          if (allPlainText && typeof marked !== 'undefined') {
+            const text = cleaned.ops.map(op => op.insert).join('')
+            if (/^#{1,6}\s|^\s*[-*]\s|\*\*|__/.test(text)) {
+              // Temporarily suppress auto-save while pasting formatted content
+              const savedId = this.editingId
+              this.editingId = null
+              quill.clipboard.dangerouslyPasteHTML(marked.parse(text))
+              this.editingId = savedId
+              return
+            }
+          }
+          quill.setContents(cleaned)
           return
         }
       } catch {}

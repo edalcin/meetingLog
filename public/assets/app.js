@@ -285,7 +285,8 @@ function app() {
                 ['bold', 'italic', 'underline'],
                 [{ list: 'ordered' }, { list: 'bullet' }],
                 ['clean']
-              ]
+              ],
+              clipboard: { matchVisual: false }
             }
           })
           this.quillEditor.on('text-change', (delta, old, source) => {

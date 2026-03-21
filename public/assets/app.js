@@ -295,6 +295,38 @@ function app() {
             this.autoSaveStatus = 'saving'
             this.autoSaveTimer = setTimeout(() => this.autoSaveNotas(), 2000)
           })
+
+          // Quill v2's clipboard module can silently fail in certain environments.
+          // This capture-phase handler takes over paste completely and inserts
+          // content directly via the stable insertText / updateContents API.
+          this.quillEditor.root.addEventListener('paste', (e) => {
+            e.preventDefault()
+            e.stopImmediatePropagation()
+            const clipboard = e.clipboardData || window.clipboardData
+            if (!clipboard) return
+            const html = clipboard.getData('text/html')
+            const text = clipboard.getData('text/plain') || ''
+            const range = this.quillEditor.getSelection(true)
+                       || { index: this.quillEditor.getLength() - 1, length: 0 }
+            if (range.length) {
+              this.quillEditor.deleteText(range.index, range.length, 'user')
+            }
+            if (html) {
+              try {
+                const delta = this.quillEditor.clipboard.convert({ html, text })
+                this.quillEditor.updateContents(
+                  { ops: [{ retain: range.index }, ...delta.ops] }, 'user'
+                )
+                this.quillEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
+                return
+              } catch {}
+            }
+            // Plain-text fallback
+            if (text) {
+              this.quillEditor.insertText(range.index, text, 'user')
+              this.quillEditor.setSelection(range.index + text.length, 0, 'user')
+            }
+          }, true)
         }
         if (!this.quillViewer) {
           this.quillViewer = new Quill('#quill-viewer', {

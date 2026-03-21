@@ -40,6 +40,9 @@ function app() {
     formErrors: {},
     pautas: [],
     novaPauta: '',
+    links: [],
+    novoLinkNome: '',
+    novoLinkUrl: '',
 
     // Participants list (tab)
     participantListLoading: false,
@@ -624,6 +627,23 @@ function app() {
       this.pautas[index].editando = !this.pautas[index].editando
     },
 
+    addLink() {
+      const nome = this.novoLinkNome.trim()
+      const url = this.novoLinkUrl.trim()
+      if (!nome || !url) return
+      this.links.push({ nome, url, editando: false })
+      this.novoLinkNome = ''
+      this.novoLinkUrl = ''
+    },
+
+    removeLink(index) {
+      this.links.splice(index, 1)
+    },
+
+    toggleEditLink(index) {
+      this.links[index].editando = !this.links[index].editando
+    },
+
     async openForm() {
       this.editingId = null
       this.formData = { data: '', hora: '', tipo: '' }
@@ -636,6 +656,9 @@ function app() {
       this.showProjectDropdown = false
       this.pautas = []
       this.novaPauta = ''
+      this.links = []
+      this.novoLinkNome = ''
+      this.novoLinkUrl = ''
       this.showForm = true
       requestAnimationFrame(() => {
         if (_quillEditor) _quillEditor.setContents([{ insert: '\n' }])
@@ -662,6 +685,9 @@ function app() {
       this.showProjectDropdown = false
       this.pautas = []
       this.novaPauta = ''
+      this.links = []
+      this.novoLinkNome = ''
+      this.novoLinkUrl = ''
       this.showForm = true
       requestAnimationFrame(() => {
         if (_quillEditor) this.loadNotasIntoQuill(_quillEditor, full.notas)
@@ -671,6 +697,7 @@ function app() {
       this.selectedParticipantIds = new Set(full.participante_ids || [])
       this.selectedProjectIds = new Set(full.projeto_ids || [])
       this.pautas = (full.pautas || []).map(p => ({ ...p, editando: false }))
+      this.links = (full.links || []).map(l => ({ ...l, editando: false }))
     },
 
     cancelForm() {
@@ -687,6 +714,9 @@ function app() {
       this.showProjectDropdown = false
       this.pautas = []
       this.novaPauta = ''
+      this.links = []
+      this.novoLinkNome = ''
+      this.novoLinkUrl = ''
     },
 
     cleanDelta(delta) {
@@ -751,7 +781,8 @@ function app() {
         notas: notasPayload,
         participante_ids: Array.from(this.selectedParticipantIds),
         projeto_ids: Array.from(this.selectedProjectIds),
-        pautas: this.pautas.map(p => p.texto)
+        pautas: this.pautas.map(p => p.texto),
+        links: this.links.map(l => ({ nome: l.nome, url: l.url }))
       }
 
       this.formLoading = true

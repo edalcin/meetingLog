@@ -20,8 +20,8 @@
 
 **⚠️ CRÍTICO**: Concluir esta fase antes de qualquer implementação de user story.
 
-- [ ] T001 Criar `migrations/010_add_link.sql` com `CREATE TABLE IF NOT EXISTS link (id INT UNSIGNED PK AUTO_INCREMENT, reuniao_id INT UNSIGNED NOT NULL FK→reuniao.id CASCADE, nome VARCHAR(500) NOT NULL, url VARCHAR(2048) NOT NULL, ordem SMALLINT UNSIGNED NOT NULL DEFAULT 0, criado_em DATETIME NOT NULL DEFAULT NOW(), UNIQUE KEY uq_link(reuniao_id, url(500)), KEY idx_link_reuniao_ordem(reuniao_id, ordem)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4` — ver data-model.md para DDL completo
-- [ ] T002 [P] Criar `docs/source/scripts/migrate-links.js` — script Node.js ES module que: (1) lê `docs/source/memoriaReunioes-DocsRelacionados.csv` (separador `;`); (2) aplica regex `/^\[(.+?)\]\s+(.+)$/` ao campo `linkDoc`; (3) converte data BRT `DD/MM/YYYY HH:MM` para UTC (+3h); (4) busca `reuniao.id` por `data_hora`; (5) executa `INSERT IGNORE INTO link (reuniao_id, nome, url, ordem) VALUES (?, ?, ?, ?)`; (6) loga skips e exibe resumo final — usar credenciais via `process.env.DB_*`
+- [x] T001 Criar `migrations/010_add_link.sql` com `CREATE TABLE IF NOT EXISTS link (id INT UNSIGNED PK AUTO_INCREMENT, reuniao_id INT UNSIGNED NOT NULL FK→reuniao.id CASCADE, nome VARCHAR(500) NOT NULL, url VARCHAR(2048) NOT NULL, ordem SMALLINT UNSIGNED NOT NULL DEFAULT 0, criado_em DATETIME NOT NULL DEFAULT NOW(), UNIQUE KEY uq_link(reuniao_id, url(500)), KEY idx_link_reuniao_ordem(reuniao_id, ordem)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4` — ver data-model.md para DDL completo
+- [x] T002 [P] Criar `docs/source/scripts/migrate-links.js` — script Node.js ES module que: (1) lê `docs/source/memoriaReunioes-DocsRelacionados.csv` (separador `;`); (2) aplica regex `/^\[(.+?)\]\s+(.+)$/` ao campo `linkDoc`; (3) converte data BRT `DD/MM/YYYY HH:MM` para UTC (+3h); (4) busca `reuniao.id` por `data_hora`; (5) executa `INSERT IGNORE INTO link (reuniao_id, nome, url, ordem) VALUES (?, ?, ?, ?)`; (6) loga skips e exibe resumo final — usar credenciais via `process.env.DB_*`
 
 **Checkpoint**: Arquivos T001 e T002 criados. Aplicar migration no banco antes de continuar:
 ```bash
@@ -37,9 +37,9 @@ DB_HOST=... DB_PASSWORD=... node docs/source/scripts/migrate-links.js
 
 **⚠️ CRÍTICO**: Concluir antes de qualquer tarefa de frontend.
 
-- [ ] T003 Estender `GET /api/meetings/:id` em `src/routes/meetings.js` — adicionar query `SELECT id, nome, url, ordem FROM link WHERE reuniao_id = ? ORDER BY ordem ASC` e incluir resultado como `links: []` no response JSON (após `pautas`)
-- [ ] T004 Estender `POST /api/meetings` em `src/routes/meetings.js` — dentro da transação existente, após inserir pautas: iterar `body.links || []`, filtrar itens com `nome.trim()` e `url.trim()` não vazios, executar `INSERT INTO link (reuniao_id, nome, url, ordem) VALUES (?, ?, ?, ?)` para cada um (índice como `ordem`)
-- [ ] T005 Estender `PUT /api/meetings/:id` em `src/routes/meetings.js` — dentro da transação existente, após substituir pautas: executar `DELETE FROM link WHERE reuniao_id = ?`, depois reinserir todos os links de `body.links` com a mesma lógica do T004
+- [x] T003 Estender `GET /api/meetings/:id` em `src/routes/meetings.js` — adicionar query `SELECT id, nome, url, ordem FROM link WHERE reuniao_id = ? ORDER BY ordem ASC` e incluir resultado como `links: []` no response JSON (após `pautas`)
+- [x] T004 Estender `POST /api/meetings` em `src/routes/meetings.js` — dentro da transação existente, após inserir pautas: iterar `body.links || []`, filtrar itens com `nome.trim()` e `url.trim()` não vazios, executar `INSERT INTO link (reuniao_id, nome, url, ordem) VALUES (?, ?, ?, ?)` para cada um (índice como `ordem`)
+- [x] T005 Estender `PUT /api/meetings/:id` em `src/routes/meetings.js` — dentro da transação existente, após substituir pautas: executar `DELETE FROM link WHERE reuniao_id = ?`, depois reinserir todos os links de `body.links` com a mesma lógica do T004
 
 **Checkpoint**: Com os endpoints prontos, chamar `GET /api/meetings/:id` e confirmar que `links: []` aparece no response. Testar `PUT` com `links: [{nome:"Teste", url:"https://example.com"}]` e verificar persistência.
 
@@ -51,14 +51,14 @@ DB_HOST=... DB_PASSWORD=... node docs/source/scripts/migrate-links.js
 
 **Independent Test**: Criar uma nova reunião, adicionar dois links no card, salvar, reabrir o formulário de edição e verificar que ambos os links aparecem com nome e URL clicáveis.
 
-- [ ] T006 [US1] Adicionar estado Alpine.js para links em `public/assets/app.js` — no objeto `data()`: `links: []` (array de `{id, nome, url, ordem}` da reunião atual), `novoLinkNome: ''`, `novoLinkUrl: ''`
-- [ ] T007 [P] [US1] Implementar método `addLink()` em `public/assets/app.js` — validar que `novoLinkNome.trim()` e `novoLinkUrl.trim()` não estão vazios; fazer push de `{nome: novoLinkNome.trim(), url: novoLinkUrl.trim()}` em `this.links`; limpar `novoLinkNome` e `novoLinkUrl`
-- [ ] T008 [P] [US1] Implementar método `removeLink(idx)` em `public/assets/app.js` — `this.links.splice(idx, 1)`
-- [ ] T009 [US1] Carregar links ao editar reunião em `public/assets/app.js` — em `editMeeting(m)`, após receber `full` da API, atribuir `this.links = (full.links || []).map(l => ({...l}))` (cópia para evitar mutação do cache)
-- [ ] T010 [US1] Resetar links ao criar nova reunião em `public/assets/app.js` — em `newMeeting()`, atribuir `this.links = []`, `this.novoLinkNome = ''`, `this.novoLinkUrl = ''`
-- [ ] T011 [US2] Incluir links no payload de `saveMeeting()` em `public/assets/app.js` — adicionar `links: this.links.map(l => ({nome: l.nome, url: l.url}))` no objeto `payload` enviado via POST/PUT
-- [ ] T012 [US1] Adicionar card de links no formulário de reunião em `public/index.html` — logo após o card de pautas existente, seguindo o mesmo padrão visual (Tailwind): seção com título "Links", lista `x-for="(link, idx) in links"` exibindo `<a :href="link.url" target="_blank" x-text="link.nome">` e botão de remover por item; linha de entrada com dois campos `<input x-model="novoLinkNome" placeholder="Nome">` e `<input x-model="novoLinkUrl" placeholder="URL">` e botão "+" que chama `addLink()` (desabilitado se nome ou url vazios)
-- [ ] T013 [US1] Resetar `novoLinkNome` e `novoLinkUrl` em `cancelForm()` em `public/assets/app.js`
+- [x] T006 [US1] Adicionar estado Alpine.js para links em `public/assets/app.js` — no objeto `data()`: `links: []` (array de `{id, nome, url, ordem}` da reunião atual), `novoLinkNome: ''`, `novoLinkUrl: ''`
+- [x] T007 [P] [US1] Implementar método `addLink()` em `public/assets/app.js` — validar que `novoLinkNome.trim()` e `novoLinkUrl.trim()` não estão vazios; fazer push de `{nome: novoLinkNome.trim(), url: novoLinkUrl.trim()}` em `this.links`; limpar `novoLinkNome` e `novoLinkUrl`
+- [x] T008 [P] [US1] Implementar método `removeLink(idx)` em `public/assets/app.js` — `this.links.splice(idx, 1)`
+- [x] T009 [US1] Carregar links ao editar reunião em `public/assets/app.js` — em `editMeeting(m)`, após receber `full` da API, atribuir `this.links = (full.links || []).map(l => ({...l}))` (cópia para evitar mutação do cache)
+- [x] T010 [US1] Resetar links ao criar nova reunião em `public/assets/app.js` — em `newMeeting()`, atribuir `this.links = []`, `this.novoLinkNome = ''`, `this.novoLinkUrl = ''`
+- [x] T011 [US2] Incluir links no payload de `saveMeeting()` em `public/assets/app.js` — adicionar `links: this.links.map(l => ({nome: l.nome, url: l.url}))` no objeto `payload` enviado via POST/PUT
+- [x] T012 [US1] Adicionar card de links no formulário de reunião em `public/index.html` — logo após o card de pautas existente, seguindo o mesmo padrão visual (Tailwind): seção com título "Links", lista `x-for="(link, idx) in links"` exibindo `<a :href="link.url" target="_blank" x-text="link.nome">` e botão de remover por item; linha de entrada com dois campos `<input x-model="novoLinkNome" placeholder="Nome">` e `<input x-model="novoLinkUrl" placeholder="URL">` e botão "+" que chama `addLink()` (desabilitado se nome ou url vazios)
+- [x] T013 [US1] Resetar `novoLinkNome` e `novoLinkUrl` em `cancelForm()` em `public/assets/app.js`
 
 **Checkpoint**: Formulário de reunião exibe card de links. Adicionar dois links, salvar, reabrir e confirmar persistência. Clicar nos links e confirmar que abrem em nova aba.
 
@@ -72,8 +72,8 @@ DB_HOST=... DB_PASSWORD=... node docs/source/scripts/migrate-links.js
 
 > **Nota**: O método `removeLink(idx)` já foi implementado em T008 (Phase 3). Esta fase valida a integração visual e o comportamento ao salvar.
 
-- [ ] T014 [US3] Verificar que o botão de remoção no card de links em `public/index.html` (adicionado em T012) chama `removeLink(idx)` corretamente e que o item desaparece imediatamente da lista sem reload
-- [ ] T015 [US3] Verificar que a remoção é persistida: após `removeLink(idx)` e `saveMeeting()`, confirmar via `GET /api/meetings/:id` que o link removido não existe mais no banco
+- [x] T014 [US3] Verificar que o botão de remoção no card de links em `public/index.html` (adicionado em T012) chama `removeLink(idx)` corretamente e que o item desaparece imediatamente da lista sem reload
+- [x] T015 [US3] Verificar que a remoção é persistida: após `removeLink(idx)` e `saveMeeting()`, confirmar via `GET /api/meetings/:id` que o link removido não existe mais no banco
 
 **Checkpoint**: Remoção de link funciona no formulário e persiste ao salvar.
 
@@ -85,8 +85,8 @@ DB_HOST=... DB_PASSWORD=... node docs/source/scripts/migrate-links.js
 
 **Independent Test**: Abrir o painel de detalhes de uma reunião com links migrados e verificar que os links aparecem como âncoras clicáveis que abrem em nova aba.
 
-- [ ] T016 [US4] Adicionar seção de links no painel de detalhes em `public/index.html` — no modal/painel `openMeetingInfo`, após a seção de pautas existente: lista `x-for="link in meetingInfo.links || []"` com `<a :href="link.url" target="_blank" x-text="link.nome">` em nova linha; ocultar seção se `meetingInfo.links?.length === 0`
-- [ ] T017 [US4] Verificar que `openMeetingInfo()` em `public/assets/app.js` já inclui `links` no `meetingInfo` após o T003 (GET /:id já retorna links) — nenhuma alteração adicional necessária ao método, apenas confirmar que `meetingInfo.links` existe
+- [x] T016 [US4] Adicionar seção de links no painel de detalhes em `public/index.html` — no modal/painel `openMeetingInfo`, após a seção de pautas existente: lista `x-for="link in meetingInfo.links || []"` com `<a :href="link.url" target="_blank" x-text="link.nome">` em nova linha; ocultar seção se `meetingInfo.links?.length === 0`
+- [x] T017 [US4] Verificar que `openMeetingInfo()` em `public/assets/app.js` já inclui `links` no `meetingInfo` após o T003 (GET /:id já retorna links) — nenhuma alteração adicional necessária ao método, apenas confirmar que `meetingInfo.links` existe
 
 **Checkpoint**: Painel de detalhes exibe lista de links clicáveis. Clicar em cada link e confirmar abertura em nova aba.
 
@@ -98,9 +98,9 @@ DB_HOST=... DB_PASSWORD=... node docs/source/scripts/migrate-links.js
 
 **Independent Test**: Editar o nome de um link existente no card, salvar a reunião e verificar que o novo nome persiste.
 
-- [ ] T018 [US5] Adicionar campo `editando: false` aos objetos link no estado Alpine.js em `public/assets/app.js` — em `editMeeting()`, ao atribuir `this.links`, mapear para `[...l, editando: false]`; em `addLink()`, incluir `editando: false` no objeto pushado
-- [ ] T019 [US5] Implementar toggle de edição em `public/assets/app.js` — método `toggleEditLink(idx)`: `this.links[idx].editando = !this.links[idx].editando`
-- [ ] T020 [US5] Adicionar modo de edição inline ao item de link em `public/index.html` — no `x-for` do card de links: exibir campos `<input x-model="link.nome">` e `<input x-model="link.url">` quando `link.editando === true`; exibir `<a>` clicável e botão de editar quando `link.editando === false`; botão para confirmar edição (`toggleEditLink(idx)`)
+- [x] T018 [US5] Adicionar campo `editando: false` aos objetos link no estado Alpine.js em `public/assets/app.js` — em `editMeeting()`, ao atribuir `this.links`, mapear para `[...l, editando: false]`; em `addLink()`, incluir `editando: false` no objeto pushado
+- [x] T019 [US5] Implementar toggle de edição em `public/assets/app.js` — método `toggleEditLink(idx)`: `this.links[idx].editando = !this.links[idx].editando`
+- [x] T020 [US5] Adicionar modo de edição inline ao item de link em `public/index.html` — no `x-for` do card de links: exibir campos `<input x-model="link.nome">` e `<input x-model="link.url">` quando `link.editando === true`; exibir `<a>` clicável e botão de editar quando `link.editando === false`; botão para confirmar edição (`toggleEditLink(idx)`)
 
 **Checkpoint**: Editar nome e URL de um link existente, salvar e reabrir para confirmar persistência.
 
@@ -110,10 +110,10 @@ DB_HOST=... DB_PASSWORD=... node docs/source/scripts/migrate-links.js
 
 **Purpose**: Validação final e ajustes transversais.
 
-- [ ] T021 [P] Validar sequência completa do quickstart.md: migration aplicada, script rodado, dados visíveis no formulário de edição de reuniões históricas
-- [ ] T022 [P] Verificar idempotência: rodar `migrate-links.js` uma segunda vez e confirmar que `SELECT COUNT(*) FROM link` retorna o mesmo valor
-- [ ] T023 Resetar `links: []` em `cancelForm()` em `public/assets/app.js` (já coberto por T013 para os campos de input — confirmar que o array `links` também é resetado)
-- [ ] T024 [P] Verificar comportamento com reunião sem links: formulário de edição exibe card vazio, painel de detalhes oculta a seção (ou exibe "Nenhum link cadastrado")
+- [x] T021 [P] Validar sequência completa do quickstart.md: migration aplicada, script rodado, dados visíveis no formulário de edição de reuniões históricas
+- [x] T022 [P] Verificar idempotência: rodar `migrate-links.js` uma segunda vez e confirmar que `SELECT COUNT(*) FROM link` retorna o mesmo valor
+- [x] T023 Resetar `links: []` em `cancelForm()` em `public/assets/app.js` (já coberto por T013 para os campos de input — confirmar que o array `links` também é resetado)
+- [x] T024 [P] Verificar comportamento com reunião sem links: formulário de edição exibe card vazio, painel de detalhes oculta a seção (ou exibe "Nenhum link cadastrado")
 
 ---
 

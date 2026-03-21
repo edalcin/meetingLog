@@ -1,4 +1,10 @@
 function app() {
+  // Quill instances stored OUTSIDE Alpine's reactive data to avoid Proxy wrapping.
+  // Alpine wraps all data properties in Proxy, which breaks Quill's internal
+  // instanceof checks and slot access, causing setContents() to throw silently.
+  let _quillEditor = null
+  let _quillViewer = null
+
   return {
     // Auth state
     authenticated: false,
@@ -256,8 +262,6 @@ function app() {
     // Toast
     toast: { show: false, message: '', error: false },
 
-    quillEditor: null,
-    quillViewer: null,
     autoSaveStatus: '',   // '', 'saving', 'saved', 'error'
     autoSaveTimer: null,
 
@@ -274,9 +278,9 @@ function app() {
         if (tab === 'participants') this.loadParticipantList()
         if (tab === 'institutions') this.loadInstitutionList()
       })
-      this.$nextTick(() => {
-        if (!this.quillEditor) {
-          this.quillEditor = new Quill('#quill-editor', {
+      requestAnimationFrame(() => {
+        if (!_quillEditor) {
+          _quillEditor = new Quill('#quill-editor', {
             theme: 'snow',
             placeholder: 'Digite as notas da reunião...',
             modules: {
@@ -289,7 +293,7 @@ function app() {
               clipboard: { matchVisual: false }
             }
           })
-          this.quillEditor.on('text-change', (delta, old, source) => {
+          _quillEditor.on('text-change', (delta, old, source) => {
             if (source !== 'user' || !this.editingId) return
             clearTimeout(this.autoSaveTimer)
             this.autoSaveStatus = 'saving'
@@ -299,37 +303,37 @@ function app() {
           // Quill v2's clipboard module can silently fail in certain environments.
           // This capture-phase handler takes over paste completely and inserts
           // content directly via the stable insertText / updateContents API.
-          this.quillEditor.root.addEventListener('paste', (e) => {
+          _quillEditor.root.addEventListener('paste', (e) => {
             e.preventDefault()
             e.stopImmediatePropagation()
             const clipboard = e.clipboardData || window.clipboardData
             if (!clipboard) return
             const html = clipboard.getData('text/html')
             const text = clipboard.getData('text/plain') || ''
-            const range = this.quillEditor.getSelection(true)
-                       || { index: this.quillEditor.getLength() - 1, length: 0 }
+            const range = _quillEditor.getSelection(true)
+                       || { index: _quillEditor.getLength() - 1, length: 0 }
             if (range.length) {
-              this.quillEditor.deleteText(range.index, range.length, 'user')
+              _quillEditor.deleteText(range.index, range.length, 'user')
             }
             if (html) {
               try {
-                const delta = this.quillEditor.clipboard.convert({ html, text })
-                this.quillEditor.updateContents(
+                const delta = _quillEditor.clipboard.convert({ html, text })
+                _quillEditor.updateContents(
                   { ops: [{ retain: range.index }, ...delta.ops] }, 'user'
                 )
-                this.quillEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
+                _quillEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
                 return
-              } catch {}
+              } catch (e) { console.error('Paste HTML failed:', e) }
             }
             // Plain-text fallback
             if (text) {
-              this.quillEditor.insertText(range.index, text, 'user')
-              this.quillEditor.setSelection(range.index + text.length, 0, 'user')
+              _quillEditor.insertText(range.index, text, 'user')
+              _quillEditor.setSelection(range.index + text.length, 0, 'user')
             }
           }, true)
         }
-        if (!this.quillViewer) {
-          this.quillViewer = new Quill('#quill-viewer', {
+        if (!_quillViewer) {
+          _quillViewer = new Quill('#quill-viewer', {
             theme: 'bubble',
             readOnly: true,
             modules: { toolbar: false }
@@ -633,8 +637,8 @@ function app() {
       this.pautas = []
       this.novaPauta = ''
       this.showForm = true
-      this.$nextTick(() => {
-        if (this.quillEditor) this.quillEditor.setContents([{ insert: '\n' }])
+      requestAnimationFrame(() => {
+        if (_quillEditor) _quillEditor.setContents([{ insert: '\n' }])
       })
       await this.loadParticipants()
       await this.loadProjects()
@@ -659,8 +663,8 @@ function app() {
       this.pautas = []
       this.novaPauta = ''
       this.showForm = true
-      this.$nextTick(() => {
-        if (this.quillEditor) this.loadNotasIntoQuill(this.quillEditor, full.notas)
+      requestAnimationFrame(() => {
+        if (_quillEditor) this.loadNotasIntoQuill(_quillEditor, full.notas)
       })
       await this.loadParticipants()
       await this.loadProjects()
@@ -707,14 +711,14 @@ function app() {
           quill.setContents(this.cleanDelta(parsed))
           return
         }
-      } catch {}
+      } catch (e) { console.error('loadNotasIntoQuill parse error:', e) }
       // Fallback: show as plain text (should not occur after DB migration)
       quill.setText(typeof notas === 'string' ? notas : '')
     },
 
     async autoSaveNotas() {
-      if (!this.editingId || !this.quillEditor) return
-      const delta = this.cleanDelta(this.quillEditor.getContents())
+      if (!this.editingId || !_quillEditor) return
+      const delta = this.cleanDelta(_quillEditor.getContents())
       const text = delta.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim()
       const notas = text ? JSON.stringify(delta) : null
       try {
@@ -735,8 +739,8 @@ function app() {
         ? `${this.formData.data}T${this.formData.hora}:00`
         : null
       const notasPayload = (() => {
-        if (!this.quillEditor) return null
-        const delta = this.cleanDelta(this.quillEditor.getContents())
+        if (!_quillEditor) return null
+        const delta = this.cleanDelta(_quillEditor.getContents())
         const text = delta.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim()
         if (!text) return null
         return JSON.stringify(delta)
@@ -786,8 +790,8 @@ function app() {
         const res = await fetch(`/api/meetings/${id}`)
         if (!res.ok) throw new Error()
         this.meetingInfo = await res.json()
-        this.$nextTick(() => {
-          if (this.quillViewer) this.loadNotasIntoQuill(this.quillViewer, this.meetingInfo.notas)
+        requestAnimationFrame(() => {
+          if (_quillViewer) this.loadNotasIntoQuill(_quillViewer, this.meetingInfo.notas)
         })
       } catch {
         this.showToast('Erro ao carregar reunião.', true)

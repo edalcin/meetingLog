@@ -345,13 +345,6 @@ function app() {
             }
           }, true)
         }
-        if (!_quillViewer) {
-          _quillViewer = new Quill('#quill-viewer', {
-            theme: 'bubble',
-            readOnly: true,
-            modules: { toolbar: false }
-          })
-        }
       })
     },
 
@@ -844,14 +837,21 @@ function app() {
         const res = await fetch(`/api/meetings/${id}`)
         if (!res.ok) throw new Error()
         this.meetingInfo = await res.json()
+        this.meetingInfoLoading = false  // set before RAF so x-if renders #quill-viewer into DOM
         requestAnimationFrame(() => {
-          if (_quillViewer) this.loadNotasIntoQuill(_quillViewer, this.meetingInfo.notas)
+          if (!_quillViewer) {
+            _quillViewer = new Quill('#quill-viewer', {
+              theme: 'bubble',
+              readOnly: true,
+              modules: { toolbar: false }
+            })
+          }
+          this.loadNotasIntoQuill(_quillViewer, this.meetingInfo.notas)
         })
         await this.loadFiles(id)
       } catch {
         this.showToast('Erro ao carregar reunião.', true)
         this.showMeetingInfo = false
-      } finally {
         this.meetingInfoLoading = false
       }
     },

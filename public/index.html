@@ -299,13 +299,14 @@
                         <span x-show="sortCol === 'projeto_nomes'" x-text="sortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
+                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Info</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <!-- Loading -->
                   <tr x-show="loading">
-                    <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                       <div class="flex items-center justify-center gap-2">
                         <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -317,7 +318,7 @@
                   </tr>
                   <!-- Empty -->
                   <tr x-show="!loading && meetings.length === 0">
-                    <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                       Nenhuma reunião encontrada.
                     </td>
                   </tr>
@@ -341,24 +342,45 @@
                       <td class="px-4 py-3 text-gray-600 max-w-xs">
                         <div class="truncate" :title="m.projeto_nomes" x-text="m.projeto_nomes"></div>
                       </td>
-                      <td class="px-4 py-3 text-right flex items-center justify-end gap-1">
-                        <button @click="openMeetingInfo(m.id)" class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded" title="Ficha da Reunião">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                          </svg>
-                        </button>
-                        <button @click="editMeeting(m)" class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded" title="Editar">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                          </svg>
-                        </button>
-                        <button @click="deleteMeeting(m.id)" class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded" title="Deletar">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
-                        </button>
+                      <!-- Info column: view + notes indicator + files indicator -->
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-center gap-1">
+                          <!-- View meeting info -->
+                          <button @click="openMeetingInfo(m.id)" class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded" title="Ficha da Reunião">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                          </button>
+                          <!-- Notes indicator -->
+                          <span x-show="m.has_notas" class="text-indigo-400 p-1" title="Tem notas">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                          </span>
+                          <!-- Files indicator -->
+                          <span x-show="m.arquivo_count > 0" class="text-teal-500 p-1" :title="`${m.arquivo_count} arquivo(s) anexado(s)`">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                          </span>
+                        </div>
+                      </td>
+                      <!-- Ações column: edit + delete -->
+                      <td class="px-4 py-3 text-right">
+                        <div class="flex items-center justify-end gap-1">
+                          <button @click="editMeeting(m)" class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded" title="Editar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                          </button>
+                          <button @click="deleteMeeting(m.id)" class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded" title="Deletar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   </template>

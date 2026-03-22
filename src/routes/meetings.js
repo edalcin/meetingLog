@@ -46,6 +46,8 @@ meetings.get('/', async (c) => {
     ),
     pool.query(
       `SELECT r.id, r.data_hora, r.tipo, r.criado_em, r.atualizado_em,
+            (r.notas IS NOT NULL) AS has_notas,
+            (SELECT COUNT(*) FROM arquivo WHERE reuniao_id = r.id) AS arquivo_count,
             GROUP_CONCAT(DISTINCT p.nome  ORDER BY p.nome  SEPARATOR ', ') AS participantes_nomes,
             GROUP_CONCAT(DISTINCT p.id    ORDER BY p.nome)                  AS participante_ids_str,
             GROUP_CONCAT(DISTINCT pr.nome ORDER BY pr.nome SEPARATOR ', ') AS projeto_nomes,

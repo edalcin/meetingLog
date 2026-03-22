@@ -262,6 +262,7 @@ function app() {
     meetingInfo: null,
     meetingInfoLoading: false,
     meetingInfoTab: 'info',   // 'info' | 'arquivos'
+    formTab: 'dados',         // 'dados' | 'arquivos'
 
     // File attachments
     meetingFiles: [],
@@ -655,6 +656,9 @@ function app() {
 
     async openForm() {
       this.editingId = null
+      this.formTab = 'dados'
+      this.meetingFiles = []
+      this.fileUploadError = ''
       this.formData = { data: '', hora: '', tipo: '' }
       this.formErrors = {}
       this.selectedParticipantIds = new Set()
@@ -677,6 +681,9 @@ function app() {
     },
 
     async editMeeting(m) {
+      this.formTab = 'dados'
+      this.meetingFiles = []
+      this.fileUploadError = ''
       this.editingId = m.id
       const res = await fetch(`/api/meetings/${m.id}`)
       const full = res.ok ? await res.json() : m
@@ -715,6 +722,9 @@ function app() {
       this.showForm = false
       this.editingId = null
       this.formErrors = {}
+      this.formTab = 'dados'
+      this.meetingFiles = []
+      this.fileUploadError = ''
       this.selectedParticipantIds = new Set()
       this.participantSearch = ''
       this.showParticipantDropdown = false

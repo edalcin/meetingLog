@@ -749,8 +749,25 @@
 
             <div class="flex-1 flex min-h-0">
 
-              <!-- Left column: form fields -->
-              <div class="flex-shrink-0 border-r border-gray-100 overflow-y-auto px-6 py-4 space-y-4" style="width: 420px;">
+              <!-- Left column: tabbed (Dados / Arquivos) -->
+              <div class="flex-shrink-0 border-r border-gray-100 flex flex-col" style="width: 420px;">
+
+                <!-- Tab header -->
+                <div class="flex border-b border-gray-200 flex-shrink-0">
+                  <button type="button" @click="formTab = 'dados'"
+                          class="px-5 py-3 text-sm font-medium transition-colors"
+                          :class="formTab === 'dados' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'">
+                    Dados
+                  </button>
+                  <button type="button" @click="formTab = 'arquivos'; editingId && loadFiles(editingId)"
+                          class="px-5 py-3 text-sm font-medium transition-colors"
+                          :class="formTab === 'arquivos' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'">
+                    Arquivos<span x-show="meetingFiles.length > 0" x-text="' (' + meetingFiles.length + ')'" class="text-xs ml-0.5"></span>
+                  </button>
+                </div>
+
+                <!-- Dados tab content -->
+                <div x-show="formTab === 'dados'" class="overflow-y-auto px-6 py-4 space-y-4 flex-1">
 
                 <div class="grid grid-cols-2 gap-4">
                   <div>
@@ -968,6 +985,50 @@
                             class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors shrink-0">+</button>
                   </div>
                 </div>
+
+                </div><!-- /Dados tab -->
+
+                <!-- Arquivos tab content -->
+                <div x-show="formTab === 'arquivos'" class="overflow-y-auto px-6 py-4 flex-1">
+                  <template x-if="!editingId">
+                    <p class="text-sm text-gray-400 italic">Registre a reunião primeiro para poder adicionar arquivos.</p>
+                  </template>
+                  <template x-if="editingId">
+                    <div>
+                      <!-- Upload button -->
+                      <label class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors mb-3 w-full"
+                             :class="uploadingFile ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span class="text-sm text-gray-600" x-text="uploadingFile ? 'Enviando...' : 'Anexar arquivo (PNG, JPG ou PDF, máx 10 MB)'"></span>
+                        <input type="file" accept=".png,.jpg,.jpeg,.pdf" class="hidden" :disabled="uploadingFile"
+                               @change="uploadFile(editingId, $el)">
+                      </label>
+                      <p x-show="fileUploadError" x-text="fileUploadError" class="text-red-600 text-sm mb-3"></p>
+                      <!-- Thumbnails grid -->
+                      <div class="grid grid-cols-3 gap-3">
+                        <template x-for="f in meetingFiles" :key="f.id">
+                          <div class="relative group cursor-pointer rounded-lg overflow-hidden bg-gray-100 aspect-square"
+                               @click="openViewer(f)">
+                            <img :src="`/api/files/${f.id}/thumbnail`" :alt="f.filename_original"
+                                 class="w-full h-full object-cover" />
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">
+                              <button @click.stop="deleteFile(editingId, f.id)"
+                                      class="opacity-0 group-hover:opacity-100 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold transition-opacity">
+                                ×
+                              </button>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 px-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <p class="text-white text-xs truncate" x-text="f.filename_original"></p>
+                            </div>
+                          </div>
+                        </template>
+                        <p x-show="meetingFiles.length === 0" class="text-sm text-gray-400 italic col-span-3">Nenhum arquivo anexado.</p>
+                      </div>
+                    </div>
+                  </template>
+                </div><!-- /Arquivos tab -->
 
               </div><!-- /left column -->
 

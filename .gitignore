@@ -13,3 +13,4 @@ Thumbs.db
 .idea/
 .claude/settings.local.json
 .claude/settings*.json
+audit/

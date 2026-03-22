@@ -261,6 +261,15 @@ function app() {
     showMeetingInfo: false,
     meetingInfo: null,
     meetingInfoLoading: false,
+    meetingInfoTab: 'info',   // 'info' | 'arquivos'
+
+    // File attachments
+    meetingFiles: [],
+    uploadingFile: false,
+    fileUploadError: '',
+
+    // File viewer modal
+    viewerFile: null,
 
     // Toast
     toast: { show: false, message: '', error: false },
@@ -817,6 +826,10 @@ function app() {
     async openMeetingInfo(id) {
       this.meetingInfoLoading = true
       this.showMeetingInfo = true
+      this.meetingInfoTab = 'info'
+      this.meetingFiles = []
+      this.fileUploadError = ''
+      this.viewerFile = null
       try {
         const res = await fetch(`/api/meetings/${id}`)
         if (!res.ok) throw new Error()
@@ -824,6 +837,7 @@ function app() {
         requestAnimationFrame(() => {
           if (_quillViewer) this.loadNotasIntoQuill(_quillViewer, this.meetingInfo.notas)
         })
+        await this.loadFiles(id)
       } catch {
         this.showToast('Erro ao carregar reunião.', true)
         this.showMeetingInfo = false
@@ -835,6 +849,65 @@ function app() {
     closeMeetingInfo() {
       this.showMeetingInfo = false
       this.meetingInfo = null
+      this.meetingFiles = []
+      this.meetingInfoTab = 'info'
+      this.viewerFile = null
+      this.fileUploadError = ''
+    },
+
+    async loadFiles(meetingId) {
+      try {
+        const res = await fetch(`/api/meetings/${meetingId}/files`)
+        if (!res.ok) throw new Error()
+        this.meetingFiles = await res.json()
+      } catch {
+        this.meetingFiles = []
+      }
+    },
+
+    async uploadFile(meetingId, inputEl) {
+      const file = inputEl?.files?.[0]
+      if (!file) return
+      this.fileUploadError = ''
+      this.uploadingFile = true
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch(`/api/meetings/${meetingId}/files`, {
+          method: 'POST',
+          body: formData
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          this.fileUploadError = data.error || 'Erro ao enviar arquivo'
+          return
+        }
+        inputEl.value = ''
+        await this.loadFiles(meetingId)
+      } catch {
+        this.fileUploadError = 'Erro de conexão. Tente novamente.'
+      } finally {
+        this.uploadingFile = false
+      }
+    },
+
+    openViewer(file) {
+      this.viewerFile = file
+    },
+
+    closeViewer() {
+      this.viewerFile = null
+    },
+
+    async deleteFile(meetingId, fileId) {
+      try {
+        const res = await fetch(`/api/files/${fileId}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        await this.loadFiles(meetingId)
+        if (this.meetingFiles.length === 0) this.meetingInfoTab = 'info'
+      } catch {
+        this.showToast('Erro ao remover arquivo.', true)
+      }
     },
 
     printMeetingInfo() {

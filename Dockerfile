@@ -10,7 +10,7 @@ COPY public ./public
 
 # Stage 2: Runtime
 FROM node:22-alpine AS runner
-RUN apk add --no-cache mysql-client
+RUN apk add --no-cache mysql-client poppler-utils
 
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules

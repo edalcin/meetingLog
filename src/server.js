@@ -1,9 +1,10 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { readFileSync } from 'fs'
+import { readFileSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import filesRouter from './routes/files.js'
 import meetingsRouter from './routes/meetings.js'
 import participantsRouter from './routes/participants.js'
 import projectsRouter from './routes/projects.js'
@@ -11,6 +12,19 @@ import institutionsRouter from './routes/institutions.js'
 import pool from './db.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// Bootstrap uploads directory
+const FILES_PATH = process.env.FILES_PATH
+if (FILES_PATH) {
+  try {
+    mkdirSync(join(FILES_PATH, 'thumbnails'), { recursive: true })
+  } catch (err) {
+    console.warn('[server] Could not create thumbnails directory:', err.message)
+  }
+} else {
+  console.warn('[server] WARNING: FILES_PATH is not set. File attachments will not work.')
+}
+
 const app = new Hono()
 
 // Health check
@@ -29,6 +43,9 @@ app.post('/api/auth/check', async (c) => {
   const ok = pin === process.env.APP_PIN
   return c.json({ ok })
 })
+
+// Files API (handles /api/meetings/:id/files and /api/files/:id/*)
+app.route('/api', filesRouter)
 
 // Meetings API
 app.route('/api/meetings', meetingsRouter)

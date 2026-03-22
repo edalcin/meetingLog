@@ -1270,9 +1270,23 @@
           <template x-if="!meetingInfoLoading && meetingInfo">
             <div>
               <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Ficha da Reunião</h2>
                 <div class="flex items-center gap-1">
-                  <button @click="printMeetingInfo()" class="text-gray-400 hover:text-indigo-600 p-1" title="Imprimir / Salvar PDF">
+                  <button @click="meetingInfoTab = 'info'"
+                          :class="meetingInfoTab === 'info' ? 'text-indigo-600 border-b-2 border-indigo-600 font-semibold' : 'text-gray-500 hover:text-gray-700'"
+                          class="text-sm px-2 pb-0.5 transition-colors">Ficha</button>
+                  <button x-show="meetingFiles.length > 0"
+                          @click="meetingInfoTab = 'arquivos'"
+                          :class="meetingInfoTab === 'arquivos' ? 'text-indigo-600 border-b-2 border-indigo-600 font-semibold' : 'text-gray-500 hover:text-gray-700'"
+                          class="text-sm px-2 pb-0.5 transition-colors flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                    Arquivos
+                    <span class="bg-indigo-100 text-indigo-700 rounded-full px-1.5 py-0.5 text-xs font-medium" x-text="meetingFiles.length"></span>
+                  </button>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button x-show="meetingInfoTab === 'info'" @click="printMeetingInfo()" class="text-gray-400 hover:text-indigo-600 p-1" title="Imprimir / Salvar PDF">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                     </svg>
@@ -1285,7 +1299,45 @@
                 </div>
               </div>
 
-              <div class="px-6 py-4 space-y-5">
+              <!-- Arquivos tab content -->
+              <div x-show="meetingInfoTab === 'arquivos'" class="px-6 py-4">
+
+                <!-- Upload area -->
+                <div class="mb-4 flex items-center gap-3">
+                  <label class="flex items-center gap-2 cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span x-text="uploadingFile ? 'Enviando...' : 'Anexar arquivo'"></span>
+                    <input type="file" accept=".png,.jpg,.jpeg,.pdf" class="hidden" :disabled="uploadingFile"
+                           @change="uploadFile(meetingInfo.id, $el)">
+                  </label>
+                  <span class="text-xs text-gray-400">PNG, JPG ou PDF · máx. 10 MB</span>
+                </div>
+                <p x-show="fileUploadError" x-text="fileUploadError" class="text-red-600 text-sm mb-3"></p>
+
+                <!-- Thumbnail grid -->
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  <template x-for="f in meetingFiles" :key="f.id">
+                    <div class="relative group rounded-lg overflow-hidden bg-gray-100 aspect-square">
+                      <img :src="`/api/files/${f.id}/thumbnail`"
+                           :title="f.filename_original"
+                           @click="openViewer(f)"
+                           class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity">
+                      <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-40 px-1.5 py-0.5 hidden group-hover:block">
+                        <p class="text-white text-xs truncate" x-text="f.filename_original"></p>
+                      </div>
+                      <button @click.stop="deleteFile(meetingInfo.id, f.id)"
+                              class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                              title="Remover arquivo">×</button>
+                    </div>
+                  </template>
+                </div>
+
+              </div>
+
+              <!-- Ficha tab content -->
+              <div x-show="meetingInfoTab === 'info'" class="px-6 py-4 space-y-5">
 
                 <!-- Data/Hora e Tipo -->
                 <div class="flex flex-wrap items-center gap-4">
@@ -1377,6 +1429,51 @@
               </div>
             </div>
           </template>
+
+        </div>
+      </div>
+
+      <!-- File Viewer Modal -->
+      <div x-show="viewerFile !== null" x-cloak
+           class="fixed inset-0 bg-black bg-opacity-80 z-[60] flex items-center justify-center p-4"
+           @click.self="closeViewer()">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+
+          <!-- Header -->
+          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
+            <p class="text-sm text-gray-700 font-medium truncate" x-text="viewerFile?.filename_original"></p>
+            <div class="flex items-center gap-2">
+              <a :href="`/api/files/${viewerFile?.id}/content`"
+                 :download="viewerFile?.filename_stored"
+                 class="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download
+              </a>
+              <button @click="closeViewer()" class="text-gray-400 hover:text-gray-600 p-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50">
+            <!-- Image viewer -->
+            <template x-if="viewerFile && viewerFile.mime_type && viewerFile.mime_type.startsWith('image/')">
+              <img :src="`/api/files/${viewerFile.id}/content`"
+                   class="max-w-full max-h-[70vh] object-contain rounded shadow">
+            </template>
+            <!-- PDF viewer -->
+            <template x-if="viewerFile && viewerFile.mime_type === 'application/pdf'">
+              <embed :src="`/api/files/${viewerFile.id}/content`"
+                     type="application/pdf"
+                     class="w-full rounded"
+                     style="height: 70vh">
+            </template>
+          </div>
 
         </div>
       </div>

@@ -69,8 +69,14 @@ function app() {
         ? this.participantListAll.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
         : this.participantListAll
       return [...list].sort((a, b) => {
-        const av = (a[this.participantSortCol] ?? '').toString().toLowerCase()
-        const bv = (b[this.participantSortCol] ?? '').toString().toLowerCase()
+        const col = this.participantSortCol
+        if (col === 'reuniao_count') {
+          return this.participantSortOrder === 'asc'
+            ? (a.reuniao_count ?? 0) - (b.reuniao_count ?? 0)
+            : (b.reuniao_count ?? 0) - (a.reuniao_count ?? 0)
+        }
+        const av = (a[col] ?? '').toString().toLowerCase()
+        const bv = (b[col] ?? '').toString().toLowerCase()
         return this.participantSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       })
     },
@@ -169,8 +175,14 @@ function app() {
             (i.nome && i.nome.toLowerCase().includes(q)))
         : this.institutionListAll
       return [...list].sort((a, b) => {
-        const av = (a[this.institutionSortCol] ?? '').toString().toLowerCase()
-        const bv = (b[this.institutionSortCol] ?? '').toString().toLowerCase()
+        const col = this.institutionSortCol
+        if (col === 'participante_count' || col === 'projeto_count') {
+          return this.institutionSortOrder === 'asc'
+            ? (a[col] ?? 0) - (b[col] ?? 0)
+            : (b[col] ?? 0) - (a[col] ?? 0)
+        }
+        const av = (a[col] ?? '').toString().toLowerCase()
+        const bv = (b[col] ?? '').toString().toLowerCase()
         return this.institutionSortOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       })
     },
@@ -229,9 +241,12 @@ function app() {
       return [...list].sort((a, b) => {
         const col = this.projectSortCol
         if (col === 'ativo') {
-          const av = a.ativo ? 1 : 0
-          const bv = b.ativo ? 1 : 0
-          return this.projectSortOrder === 'asc' ? av - bv : bv - av
+          return this.projectSortOrder === 'asc' ? (a.ativo ? 1 : 0) - (b.ativo ? 1 : 0) : (b.ativo ? 1 : 0) - (a.ativo ? 1 : 0)
+        }
+        if (col === 'reuniao_count') {
+          return this.projectSortOrder === 'asc'
+            ? (a.reuniao_count ?? 0) - (b.reuniao_count ?? 0)
+            : (b.reuniao_count ?? 0) - (a.reuniao_count ?? 0)
         }
         const av = (a[col] ?? '').toString().toLowerCase()
         const bv = (b[col] ?? '').toString().toLowerCase()

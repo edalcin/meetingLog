@@ -478,7 +478,12 @@
                         <span x-show="participantSortCol === 'cargo'" x-text="participantSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
-                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Reuniões</th>
+                    <th class="px-4 py-3 text-center">
+                      <button @click="setSortParticipant('reuniao_count')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors mx-auto">
+                        Reuniões
+                        <span x-show="participantSortCol === 'reuniao_count'" x-text="participantSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                      </button>
+                    </th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
@@ -605,7 +610,12 @@
                         <span x-show="projectSortCol === 'instituicao'" x-text="projectSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
-                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Reuniões</th>
+                    <th class="px-4 py-3 text-center">
+                      <button @click="setSortProject('reuniao_count')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors mx-auto">
+                        Reuniões
+                        <span x-show="projectSortCol === 'reuniao_count'" x-text="projectSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                      </button>
+                    </th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
@@ -722,8 +732,18 @@
                         <span x-show="institutionSortCol === 'nome'" x-text="institutionSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
-                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Participantes</th>
-                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Projetos</th>
+                    <th class="px-4 py-3 text-center">
+                      <button @click="setSortInstitution('participante_count')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors mx-auto">
+                        Participantes
+                        <span x-show="institutionSortCol === 'participante_count'" x-text="institutionSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-center">
+                      <button @click="setSortInstitution('projeto_count')" class="flex items-center gap-1 font-semibold text-gray-700 hover:text-blue-600 transition-colors mx-auto">
+                        Projetos
+                        <span x-show="institutionSortCol === 'projeto_count'" x-text="institutionSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
+                      </button>
+                    </th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>

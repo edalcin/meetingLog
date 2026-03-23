@@ -950,6 +950,14 @@ function app() {
       }
     },
 
+    openNewParticipant() {
+      this.editingParticipant = null
+      this.participantForm = { nome: '', instituicao: '', cargo: '', email: '' }
+      this.participantFormErrors = {}
+      this.participantInstSearch = ''
+      this.showParticipantForm = true
+    },
+
     openEditParticipant(p) {
       this.editingParticipant = p.id
       this.participantForm = { nome: p.nome, instituicao: p.instituicao ?? '', cargo: p.cargo ?? '', email: p.email ?? '' }
@@ -973,20 +981,26 @@ function app() {
         return
       }
       this.participantFormLoading = true
+      const isNew = this.editingParticipant === null
       try {
-        const res = await fetch(`/api/participants/${this.editingParticipant}`, {
-          method: 'PUT',
+        const res = await fetch(isNew ? '/api/participants' : `/api/participants/${this.editingParticipant}`, {
+          method: isNew ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(this.participantForm)
         })
         const body = await res.json()
         if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
-        const idx = this.participantListAll.findIndex(p => p.id === this.editingParticipant)
-        if (idx >= 0) this.participantListAll[idx] = body
-        const idx2 = this.allParticipants.findIndex(p => p.id === this.editingParticipant)
-        if (idx2 >= 0) this.allParticipants[idx2] = body
+        if (isNew) {
+          this.participantListAll.push(body)
+          this.allParticipants.push(body)
+        } else {
+          const idx = this.participantListAll.findIndex(p => p.id === this.editingParticipant)
+          if (idx >= 0) this.participantListAll[idx] = body
+          const idx2 = this.allParticipants.findIndex(p => p.id === this.editingParticipant)
+          if (idx2 >= 0) this.allParticipants[idx2] = body
+        }
         this.cancelParticipantForm()
-        this.showToast('Participante atualizado!')
+        this.showToast(isNew ? 'Participante criado!' : 'Participante atualizado!')
       } catch {
         this.showToast('Erro de conexão.', true)
       } finally {
@@ -1005,6 +1019,14 @@ function app() {
       } catch {
         this.showToast('Erro ao excluir projeto.', true)
       }
+    },
+
+    openNewProject() {
+      this.editingProject = null
+      this.projectForm = { nome: '', ativo: true, instituicao: '' }
+      this.projectFormErrors = {}
+      this.projectInstSearch = ''
+      this.showProjectForm = true
     },
 
     openEditProject(p) {
@@ -1030,18 +1052,23 @@ function app() {
         return
       }
       this.projectFormLoading = true
+      const isNew = this.editingProject === null
       try {
-        const res = await fetch(`/api/projects/${this.editingProject}`, {
-          method: 'PUT',
+        const res = await fetch(isNew ? '/api/projects' : `/api/projects/${this.editingProject}`, {
+          method: isNew ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(this.projectForm)
         })
         const body = await res.json()
         if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
-        const idx = this.allProjects.findIndex(p => p.id === this.editingProject)
-        if (idx >= 0) this.allProjects[idx] = body
+        if (isNew) {
+          this.allProjects.push(body)
+        } else {
+          const idx = this.allProjects.findIndex(p => p.id === this.editingProject)
+          if (idx >= 0) this.allProjects[idx] = body
+        }
         this.cancelProjectForm()
-        this.showToast('Projeto atualizado!')
+        this.showToast(isNew ? 'Projeto criado!' : 'Projeto atualizado!')
       } catch {
         this.showToast('Erro de conexão.', true)
       } finally {

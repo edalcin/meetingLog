@@ -21,7 +21,10 @@ institutions.get('/', async (c) => {
   )
 
   const [rows] = await pool.query(
-    `SELECT id, sigla, nome FROM instituicao ${where} ORDER BY sigla ASC LIMIT ?`,
+    `SELECT id, sigla, nome,
+            (SELECT COUNT(*) FROM participante_instituicao WHERE instituicao_id = instituicao.id) AS participante_count,
+            (SELECT COUNT(*) FROM projeto_instituicao WHERE instituicao_id = instituicao.id) AS projeto_count
+     FROM instituicao ${where} ORDER BY sigla ASC LIMIT ?`,
     [...params, limit]
   )
 

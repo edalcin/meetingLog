@@ -29,13 +29,33 @@ projects.get('/', async (c) => {
   )
 
   const [rows] = await pool.query(
-    `SELECT id, nome, ativo, instituicao FROM projeto ${where} ORDER BY nome ASC LIMIT ?`,
+    `SELECT id, nome, ativo, instituicao,
+            (SELECT COUNT(*) FROM reuniao_projeto WHERE projeto_id = projeto.id) AS reuniao_count
+     FROM projeto ${where} ORDER BY nome ASC LIMIT ?`,
     [...params, limit]
   )
 
   const data = rows.map(r => ({ ...r, ativo: Boolean(r.ativo) }))
 
   return c.json({ data, total })
+})
+
+// POST /api/projects
+projects.post('/', async (c) => {
+  const body = await c.req.json()
+  const nome = body.nome?.trim()
+  if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
+  if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
+  const ativo = body.ativo === true || body.ativo === 1 ? 1 : 0
+  const [result] = await pool.query(
+    'INSERT INTO projeto (nome, ativo, instituicao) VALUES (?, ?, ?)',
+    [nome, ativo, body.instituicao?.trim() || null]
+  )
+  const [[row]] = await pool.query(
+    'SELECT id, nome, ativo, instituicao FROM projeto WHERE id = ?',
+    [result.insertId]
+  )
+  return c.json({ ...row, ativo: Boolean(row.ativo) }, 201)
 })
 
 // PUT /api/projects/:id

@@ -21,7 +21,9 @@ participants.get('/', async (c) => {
   )
 
   const [rows] = await pool.query(
-    `SELECT id, nome, instituicao, cargo, email FROM participante ${where} ORDER BY nome ASC LIMIT ?`,
+    `SELECT id, nome, instituicao, cargo, email,
+            (SELECT COUNT(*) FROM reuniao_participante WHERE participante_id = participante.id) AS reuniao_count
+     FROM participante ${where} ORDER BY nome ASC LIMIT ?`,
     [...params, limit]
   )
 

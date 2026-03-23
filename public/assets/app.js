@@ -117,7 +117,7 @@ function app() {
       return this.allProjects.filter(pr => {
         if (this.filterProjIds.has(pr.id)) return false
         if (!q) return true
-        return pr.nome.toLowerCase().includes(q) || (pr.instituicao && pr.instituicao.toLowerCase().includes(q))
+        return pr.nome.toLowerCase().includes(q) || (pr.instituicao_nomes && pr.instituicao_nomes.toLowerCase().includes(q))
       })
     },
 
@@ -129,7 +129,7 @@ function app() {
 
     get projInstituicaoOptions() {
       const q = this.filterProjInstituicao.toLowerCase()
-      const unique = [...new Set(this.allProjects.map(p => p.instituicao).filter(Boolean))].sort()
+      const unique = [...new Set(this.allProjects.map(p => p.instituicao_nomes).filter(Boolean))].sort()
       return q ? unique.filter(i => i.toLowerCase().includes(q)) : unique
     },
 
@@ -145,7 +145,7 @@ function app() {
 
     // Project edit modal
     editingProject: null,
-    projectForm: { nome: '', ativo: true, instituicao: '' },
+    projectForm: { nome: '', ativo: true, instituicao_ids: new Set() },
     projectFormErrors: {},
     projectFormLoading: false,
     showProjectForm: false,
@@ -210,17 +210,26 @@ function app() {
       )
     },
 
+    get selectedProjectInsts() {
+      return this.institutionListAll.filter(i => this.projectForm.instituicao_ids.has(i.id))
+    },
+
     get filteredProjectInstOptions() {
       const q = this.projectInstSearch.toLowerCase().trim()
-      if (!q) return this.institutionListAll.slice(0, 50)
-      return this.institutionListAll.filter(i =>
+      const notSelected = this.institutionListAll.filter(i => !this.projectForm.instituicao_ids.has(i.id))
+      if (!q) return notSelected.slice(0, 50)
+      return notSelected.filter(i =>
         i.sigla.toLowerCase().includes(q) || (i.nome && i.nome.toLowerCase().includes(q))
       )
     },
 
     get showProjectInstCreateOption() {
       const q = this.projectInstSearch.trim()
-      return q.length > 0 && !this.institutionListAll.some(
+      if (!q) return false
+      const alreadySelected = this.selectedProjectInsts.some(
+        i => i.sigla.toLowerCase() === q.toLowerCase()
+      )
+      return !alreadySelected && !this.institutionListAll.some(
         i => i.sigla.toLowerCase() === q.toLowerCase()
       )
     },
@@ -229,7 +238,7 @@ function app() {
       const status = this.projectStatusFilter
       const q = this.filterProjInstituicao.toLowerCase()
       let list = q
-        ? this.allProjects.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
+        ? this.allProjects.filter(p => p.instituicao_nomes && p.instituicao_nomes.toLowerCase().includes(q))
         : this.allProjects
       if (status) {
         list = list.filter(p => {
@@ -268,7 +277,7 @@ function app() {
         if (!pr.ativo) return false
         if (!q) return true
         return pr.nome.toLowerCase().includes(q) ||
-          (pr.instituicao && pr.instituicao.toLowerCase().includes(q))
+          (pr.instituicao_nomes && pr.instituicao_nomes.toLowerCase().includes(q))
       })
     },
 
@@ -1038,7 +1047,7 @@ function app() {
 
     openNewProject() {
       this.editingProject = null
-      this.projectForm = { nome: '', ativo: true, instituicao: '' }
+      this.projectForm = { nome: '', ativo: true, instituicao_ids: new Set() }
       this.projectFormErrors = {}
       this.projectInstSearch = ''
       this.showProjectForm = true
@@ -1046,9 +1055,9 @@ function app() {
 
     openEditProject(p) {
       this.editingProject = p.id
-      this.projectForm = { nome: p.nome, ativo: p.ativo, instituicao: p.instituicao ?? '' }
+      this.projectForm = { nome: p.nome, ativo: p.ativo, instituicao_ids: new Set(p.instituicao_ids || []) }
       this.projectFormErrors = {}
-      this.projectInstSearch = p.instituicao ?? ''
+      this.projectInstSearch = ''
       this.showProjectForm = true
     },
 
@@ -1072,7 +1081,11 @@ function app() {
         const res = await fetch(isNew ? '/api/projects' : `/api/projects/${this.editingProject}`, {
           method: isNew ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.projectForm)
+          body: JSON.stringify({
+            nome: this.projectForm.nome,
+            ativo: this.projectForm.ativo,
+            instituicao_ids: Array.from(this.projectForm.instituicao_ids),
+          })
         })
         const body = await res.json()
         if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
@@ -1159,9 +1172,6 @@ function app() {
             for (const p of this.allParticipants) {
               if (p.instituicao === oldSigla) p.instituicao = newSigla
             }
-            for (const p of this.allProjects) {
-              if (p.instituicao === oldSigla) p.instituicao = newSigla
-            }
           }
         } else {
           this.institutionListAll.push(body)
@@ -1224,16 +1234,30 @@ function app() {
       }
     },
 
-    selectProjectInst(sigla) {
-      this.projectForm.instituicao = sigla
-      this.projectInstSearch = sigla
+    selectProjectInst(inst) {
+      this.projectForm.instituicao_ids.add(inst.id)
+      this.projectInstSearch = ''
       this.showProjectInstDropdown = false
     },
 
-    clearProjectInst() {
-      this.projectForm.instituicao = ''
-      this.projectInstSearch = ''
-      this.showProjectInstDropdown = false
+    removeProjectInst(id) {
+      this.projectForm.instituicao_ids.delete(id)
+    },
+
+    async handleProjectInstEnter() {
+      const q = this.projectInstSearch.trim()
+      if (!q) return
+      const exact = this.institutionListAll.find(i => i.sigla.toLowerCase() === q.toLowerCase())
+      if (exact) {
+        if (!this.projectForm.instituicao_ids.has(exact.id)) {
+          this.selectProjectInst(exact)
+        } else {
+          this.projectInstSearch = ''
+          this.showProjectInstDropdown = false
+        }
+      } else {
+        await this.createAndSelectProjectInst(q)
+      }
     },
 
     async createAndSelectProjectInst(sigla) {
@@ -1246,7 +1270,9 @@ function app() {
         const body = await res.json()
         if (!res.ok) { this.showToast(body.error || 'Erro ao criar instituição', true); return }
         this.institutionListAll.push(body)
-        this.selectProjectInst(body.sigla)
+        this.projectForm.instituicao_ids.add(body.id)
+        this.projectInstSearch = ''
+        this.showProjectInstDropdown = false
         this.showToast('Instituição criada!')
       } catch {
         this.showToast('Erro de conexão.', true)

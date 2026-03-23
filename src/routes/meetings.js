@@ -101,10 +101,14 @@ meetings.get('/:id', async (c) => {
   )
 
   const [prRows] = await pool.query(
-    `SELECT pr.id, pr.nome, pr.ativo, pr.instituicao
+    `SELECT pr.id, pr.nome, pr.ativo,
+            COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes
      FROM reuniao_projeto rpj
      JOIN projeto pr ON pr.id = rpj.projeto_id
+     LEFT JOIN projeto_instituicao pi ON pi.projeto_id = pr.id
+     LEFT JOIN instituicao i ON i.id = pi.instituicao_id
      WHERE rpj.reuniao_id = ?
+     GROUP BY pr.id
      ORDER BY pr.nome`,
     [id]
   )

@@ -1,6 +1,6 @@
-# meetingLog Development Guidelines
+﻿# meetingLog Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-21
+Auto-generated from all feature plans. Last updated: 2026-03-23
 
 ## Project Overview
 
@@ -14,6 +14,8 @@ Meeting log web application. Single Node.js (Hono) container serving REST API + 
 - Node.js 22, ES modules + Hono (web framework), mysql2/promise (DB), Alpine.js CDN, Tailwind CSS CDN (005-add-notas-editor)
 - MariaDB — `reunioes` database, `reuniao` table — adding column `notas TEXT NULL` (005-add-notas-editor)
 - MariaDB — tabela `link` (1:N com `reuniao`); migration `010_add_link.sql`; script CSV `memoriaReunioes-DocsRelacionados.csv` (006-add-links-table)
+- Node.js 22 (ES modules) + Hono (web framework), mysql2/promise (MariaDB), Alpine.js CDN, Tailwind CSS CDN (008-multi-institution-projects)
+- MariaDB — `reunioes` database; junction table `projeto_instituicao` já existe (008-multi-institution-projects)
 
 - Node.js 22 + Hono (web framework) — main feature
 - mysql2 (MariaDB driver)
@@ -53,9 +55,9 @@ docker build .       # Build Docker image
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `APP_PIN`, `APP_PORT` (default 3000)
 
 ## Recent Changes
+- 008-multi-institution-projects: Added Node.js 22 (ES modules) + Hono (web framework), mysql2/promise (MariaDB), Alpine.js CDN, Tailwind CSS CDN
 - 006-add-links-table: Tabela `link` (1:N com reuniao), card de links no formulário, exibição no painel de detalhes, script de migração CSV, migration `010_add_link.sql`
 - 005-add-notas-editor: Added Node.js 22, ES modules + Hono (web framework), mysql2/promise (DB), Alpine.js CDN, Tailwind CSS CDN
-- 004-add-pauta: Tabela `pauta` (1:N com reuniao), card de pautas no formulário, script de migração CSV, migration `008_add_pauta.sql`
 
 
 <!-- MANUAL ADDITIONS START -->

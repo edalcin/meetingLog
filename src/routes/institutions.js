@@ -69,7 +69,6 @@ institutions.put('/:id', async (c) => {
 
   if (current.sigla !== sigla) {
     await pool.query('UPDATE participante SET instituicao=? WHERE instituicao=?', [sigla, current.sigla])
-    await pool.query('UPDATE projeto SET instituicao=? WHERE instituicao=?', [sigla, current.sigla])
   }
 
   const [[row]] = await pool.query('SELECT id, sigla, nome FROM instituicao WHERE id=?', [id])

@@ -1149,7 +1149,20 @@ function app() {
         if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
         if (this.editingInstitution) {
           const idx = this.institutionListAll.findIndex(i => i.id === this.editingInstitution)
+          const oldSigla = body.oldSigla
+          const newSigla = body.sigla
           if (idx >= 0) this.institutionListAll[idx] = body
+          if (oldSigla && oldSigla !== newSigla) {
+            for (const p of this.participantListAll) {
+              if (p.instituicao === oldSigla) p.instituicao = newSigla
+            }
+            for (const p of this.allParticipants) {
+              if (p.instituicao === oldSigla) p.instituicao = newSigla
+            }
+            for (const p of this.allProjects) {
+              if (p.instituicao === oldSigla) p.instituicao = newSigla
+            }
+          }
         } else {
           this.institutionListAll.push(body)
         }

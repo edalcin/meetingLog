@@ -58,15 +58,22 @@ institutions.put('/:id', async (c) => {
   if (!sigla) return c.json({ error: 'Sigla é obrigatória' }, 400)
   if (sigla.length > 100) return c.json({ error: 'Sigla muito longa' }, 400)
 
+  const [[current]] = await pool.query('SELECT sigla FROM instituicao WHERE id=?', [id])
+  if (!current) return c.json({ error: 'Instituição não encontrada' }, 404)
+
   const [result] = await pool.query(
     'UPDATE instituicao SET sigla=?, nome=? WHERE id=?',
     [sigla, body.nome?.trim() || null, id]
   )
   if (result.affectedRows === 0) return c.json({ error: 'Instituição não encontrada' }, 404)
-  const [[row]] = await pool.query(
-    'SELECT id, sigla, nome FROM instituicao WHERE id=?', [id]
-  )
-  return c.json(row)
+
+  if (current.sigla !== sigla) {
+    await pool.query('UPDATE participante SET instituicao=? WHERE instituicao=?', [sigla, current.sigla])
+    await pool.query('UPDATE projeto SET instituicao=? WHERE instituicao=?', [sigla, current.sigla])
+  }
+
+  const [[row]] = await pool.query('SELECT id, sigla, nome FROM instituicao WHERE id=?', [id])
+  return c.json({ ...row, oldSigla: current.sigla })
 })
 
 // DELETE /api/institutions/:id

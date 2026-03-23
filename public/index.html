@@ -31,7 +31,7 @@
     @media print {
       body * { visibility: hidden; }
       .print-area, .print-area * { visibility: visible; }
-      .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+      .print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none !important; overflow: visible !important; }
     }
     /* Quill editor: fill right column height */
     #quill-editor-wrapper {

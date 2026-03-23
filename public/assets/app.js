@@ -887,6 +887,7 @@ function app() {
       this.meetingInfoTab = 'info'
       this.viewerFile = null
       this.fileUploadError = ''
+      _quillViewer = null  // x-if removes #quill-viewer from DOM on close; reset so it's re-initialized on next open
     },
 
     async loadFiles(meetingId) {

@@ -940,7 +940,8 @@ function app() {
       if (!confirm(`Confirma a exclusão de "${nome}"?`)) return
       try {
         const res = await fetch(`/api/participants/${id}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error()
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao excluir participante.', true); return }
         this.participantListAll = this.participantListAll.filter(p => p.id !== id)
         this.allParticipants = this.allParticipants.filter(p => p.id !== id)
         this.showToast('Participante excluído.')
@@ -997,7 +998,8 @@ function app() {
       if (!confirm(`Confirma a exclusão do projeto "${nome}"?`)) return
       try {
         const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error()
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao excluir projeto.', true); return }
         this.allProjects = this.allProjects.filter(p => p.id !== id)
         this.showToast('Projeto excluído.')
       } catch {
@@ -1122,7 +1124,8 @@ function app() {
       if (!confirm(`Confirma a exclusão da instituição "${sigla}"?`)) return
       try {
         const res = await fetch(`/api/institutions/${id}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error()
+        const body = await res.json()
+        if (!res.ok) { this.showToast(body.error || 'Erro ao excluir instituição.', true); return }
         this.institutionListAll = this.institutionListAll.filter(i => i.id !== id)
         this.showToast('Instituição excluída.')
       } catch {
@@ -1197,7 +1200,7 @@ function app() {
 
     showToast(message, error = false) {
       this.toast = { show: true, message, error }
-      setTimeout(() => { this.toast.show = false }, 3000)
+      setTimeout(() => { this.toast.show = false }, error ? 6000 : 3000)
     }
   }
 }

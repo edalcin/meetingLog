@@ -62,6 +62,23 @@ projects.put('/:id', async (c) => {
 projects.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   if (!id) return c.json({ error: 'ID inválido' }, 400)
+
+  const [[{ total }]] = await pool.query(
+    'SELECT COUNT(*) AS total FROM reuniao_projeto WHERE projeto_id = ?', [id]
+  )
+
+  if (total > 0) {
+    const [rows] = await pool.query(
+      `SELECT DATE_FORMAT(r.data_hora, '%d/%m/%Y') AS data FROM reuniao r
+       JOIN reuniao_projeto rp ON rp.reuniao_id = r.id
+       WHERE rp.projeto_id = ? ORDER BY r.data_hora LIMIT 5`,
+      [id]
+    )
+    const dates = rows.map(r => r.data).join(', ')
+    const extra = total > 5 ? ` e mais ${total - 5}` : ''
+    return c.json({ error: `Não é possível excluir: projeto vinculado a ${total} reunião(ões) (${dates}${extra}).` }, 409)
+  }
+
   const [result] = await pool.query('DELETE FROM projeto WHERE id = ?', [id])
   if (result.affectedRows === 0) return c.json({ error: 'Projeto não encontrado' }, 404)
   return c.json({ ok: true })

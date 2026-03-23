@@ -70,6 +70,37 @@ institutions.put('/:id', async (c) => {
 institutions.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   if (!id) return c.json({ error: 'ID inválido' }, 400)
+
+  const [[{ pTotal }]] = await pool.query(
+    'SELECT COUNT(*) AS pTotal FROM participante_instituicao WHERE instituicao_id = ?', [id]
+  )
+  const [[{ prTotal }]] = await pool.query(
+    'SELECT COUNT(*) AS prTotal FROM projeto_instituicao WHERE instituicao_id = ?', [id]
+  )
+
+  if (pTotal > 0 || prTotal > 0) {
+    const parts = []
+    if (pTotal > 0) {
+      const [rows] = await pool.query(
+        'SELECT p.nome FROM participante p JOIN participante_instituicao pi ON pi.participante_id = p.id WHERE pi.instituicao_id = ? ORDER BY p.nome LIMIT 5',
+        [id]
+      )
+      const names = rows.map(r => r.nome).join(', ')
+      const extra = pTotal > 5 ? ` e mais ${pTotal - 5}` : ''
+      parts.push(`${pTotal} participante(s): ${names}${extra}`)
+    }
+    if (prTotal > 0) {
+      const [rows] = await pool.query(
+        'SELECT p.nome FROM projeto p JOIN projeto_instituicao pi ON pi.projeto_id = p.id WHERE pi.instituicao_id = ? ORDER BY p.nome LIMIT 5',
+        [id]
+      )
+      const names = rows.map(r => r.nome).join(', ')
+      const extra = prTotal > 5 ? ` e mais ${prTotal - 5}` : ''
+      parts.push(`${prTotal} projeto(s): ${names}${extra}`)
+    }
+    return c.json({ error: `Não é possível excluir: vinculada a ${parts.join(' e ')}.` }, 409)
+  }
+
   const [result] = await pool.query('DELETE FROM instituicao WHERE id = ?', [id])
   if (result.affectedRows === 0) return c.json({ error: 'Instituição não encontrada' }, 404)
   return c.json({ ok: true })

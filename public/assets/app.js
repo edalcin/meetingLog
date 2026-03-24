@@ -989,6 +989,10 @@ function app() {
   .ql-editor { padding: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; }
   .ql-editor p { margin: 0 0 0.3em; }
   .ql-editor ul, .ql-editor ol { padding-left: 1.6em; margin: 0 0 0.3em; }
+  .ql-editor li[data-list="bullet"] { list-style-type: disc; }
+  .ql-editor li[data-list="ordered"] { list-style-type: decimal; }
+  .ql-editor li[data-list="bullet"].ql-indent-1 { list-style-type: circle; }
+  .ql-editor li[data-list="bullet"].ql-indent-2 { list-style-type: square; }
   .ql-editor .ql-indent-1 { padding-left: 3em; }
   .ql-editor .ql-indent-2 { padding-left: 6em; }
   .ql-editor .ql-indent-3 { padding-left: 9em; }

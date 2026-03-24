@@ -28,12 +28,7 @@
   <link rel="stylesheet" href="/assets/styles.css" />
 
   <style>
-    @media print {
-      body * { visibility: hidden; }
-      .print-area, .print-area * { visibility: visible; }
-      .print-area { position: absolute; left: 0; top: 0; width: 100%; max-height: none !important; overflow: visible !important; }
-    }
-    /* Quill editor: fill right column height */
+/* Quill editor: fill right column height */
     #quill-editor-wrapper {
       display: flex;
       flex-direction: column;
@@ -1395,7 +1390,7 @@
       <div x-show="showMeetingInfo" x-cloak
            class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4"
            @click.self="closeMeetingInfo()">
-        <div class="print-area bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
           <!-- Loading state -->
           <div x-show="meetingInfoLoading" class="px-6 py-12 text-center text-gray-400">

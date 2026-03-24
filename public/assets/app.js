@@ -946,7 +946,73 @@ function app() {
     },
 
     printMeetingInfo() {
-      window.print()
+      const m = this.meetingInfo
+      const dataHora = this.formatDate(m.data_hora)
+
+      const quillEl = document.getElementById('quill-viewer')
+      const notesHtml = quillEl?.querySelector('.ql-editor')?.innerHTML || ''
+
+      const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+
+      const participantesHtml = (m.participantes || []).map(p => {
+        let linha = `<strong>${esc(p.nome)}</strong>`
+        if (p.instituicao) linha += ` — ${esc(p.instituicao)}`
+        if (p.cargo) linha += ` (${esc(p.cargo)})`
+        return `<li>${linha}</li>`
+      }).join('')
+
+      const projetosHtml = (m.projetos || []).map(pr => `<li>${esc(pr.nome)}</li>`).join('')
+
+      const pautasHtml = (m.pautas || []).map(p => `<li>${esc(p.texto)}</li>`).join('')
+
+      const linksHtml = (m.links || []).map(l =>
+        `<li><a href="${esc(l.url)}">${esc(l.nome || l.url)}</a></li>`
+      ).join('')
+
+      const section = (label, content) =>
+        content ? `<section><h2>${label}</h2>${content}</section>` : ''
+
+      const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Ficha de Reunião — ${dataHora}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; color: #000; margin: 2.5cm 2cm; }
+  h1 { font-size: 15pt; font-weight: bold; margin: 0 0 1.5em; border-bottom: 1pt solid #000; padding-bottom: 0.4em; }
+  section { margin-bottom: 1.2em; }
+  h2 { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #555; margin: 0 0 0.35em; }
+  p, li, a { font-size: 12pt; line-height: 1.5; }
+  ul, ol { margin: 0; padding-left: 1.6em; }
+  a { color: #000; word-break: break-all; }
+  /* Quill content */
+  .ql-editor { padding: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; }
+  .ql-editor p { margin: 0 0 0.3em; }
+  .ql-editor ul, .ql-editor ol { padding-left: 1.6em; margin: 0 0 0.3em; }
+  .ql-editor .ql-indent-1 { padding-left: 3em; }
+  .ql-editor .ql-indent-2 { padding-left: 6em; }
+  .ql-editor .ql-indent-3 { padding-left: 9em; }
+  .ql-editor .ql-indent-4 { padding-left: 12em; }
+  @page { margin: 2cm; }
+</style>
+</head>
+<body>
+<h1>Ficha de Reunião</h1>
+${section('Data / Hora', `<p>${dataHora}</p>`)}
+${section('Tipo', `<p>${esc(m.tipo)}</p>`)}
+${section('Participantes', participantesHtml ? `<ul>${participantesHtml}</ul>` : '')}
+${section('Projetos', projetosHtml ? `<ul>${projetosHtml}</ul>` : '')}
+${section('Pautas', pautasHtml ? `<ol>${pautasHtml}</ol>` : '')}
+${section('Links', linksHtml ? `<ul>${linksHtml}</ul>` : '')}
+${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div></section>` : ''}
+</body>
+</html>`
+
+      const win = window.open('', '_blank', 'width=800,height=600')
+      win.document.write(html)
+      win.document.close()
+      win.focus()
+      win.print()
     },
 
     async deleteMeeting(id) {

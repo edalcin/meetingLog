@@ -889,7 +889,7 @@
                       </div>
                     </template>
                     <!-- Create new project option (US2) -->
-                    <div x-show="filteredMaintToProjects.length === 0 && maintReplaceToSearch.trim() !== ''"
+                    <div x-show="maintReplaceToSearch.trim() !== '' && !allProjects.some(p => p.nome.toLowerCase() === maintReplaceToSearch.trim().toLowerCase())"
                          @mousedown.prevent="maintCreateProject(maintReplaceToSearch.trim())"
                          class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm text-blue-600 font-medium border-t border-gray-100">
                       <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -898,7 +898,9 @@
                       <span>Criar projeto "<span x-text="maintReplaceToSearch.trim()"></span>"</span>
                     </div>
                     <div x-show="filteredMaintToProjects.length === 0 && maintReplaceToSearch.trim() === ''"
-                         class="px-3 py-2 text-sm text-gray-400">Nenhum projeto encontrado.</div>
+                         class="px-3 py-2 text-sm text-gray-400">Digite para buscar um projeto.</div>
+                    <div x-show="filteredMaintToProjects.length === 0 && maintReplaceToSearch.trim() !== '' && allProjects.some(p => p.nome.toLowerCase() === maintReplaceToSearch.trim().toLowerCase())"
+                         class="px-3 py-2 text-sm text-gray-400">Projeto já existe (selecione acima).</div>
                   </div>
                 </div>
               </div>

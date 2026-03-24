@@ -15,7 +15,7 @@ function parseRow(r) {
 // SELECT com JOINs para um único projeto (usado após INSERT/UPDATE)
 async function fetchProjectById(conn, id) {
   const [[row]] = await conn.query(
-    `SELECT p.id, p.nome, p.ativo,
+    `SELECT p.id, p.nome, p.ativo, p.notas,
             COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes,
             COALESCE(GROUP_CONCAT(DISTINCT i.id    ORDER BY i.sigla SEPARATOR ','),     '') AS instituicao_ids_str
      FROM projeto p
@@ -27,6 +27,29 @@ async function fetchProjectById(conn, id) {
   )
   return row ? parseRow(row) : null
 }
+
+// GET /api/projects/:id/detail
+projects.get('/:id/detail', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+  const [[row]] = await pool.query(
+    `SELECT p.id, p.nome, p.ativo, p.notas,
+            COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes,
+            COALESCE(GROUP_CONCAT(DISTINCT i.id    ORDER BY i.sigla SEPARATOR ','),     '') AS instituicao_ids_str
+     FROM projeto p
+     LEFT JOIN projeto_instituicao pi ON pi.projeto_id = p.id
+     LEFT JOIN instituicao i ON i.id = pi.instituicao_id
+     WHERE p.id = ?
+     GROUP BY p.id`,
+    [id]
+  )
+  if (!row) return c.json({ error: 'Projeto não encontrado' }, 404)
+  const [linkRows] = await pool.query(
+    'SELECT id, nome, url, ordem FROM projeto_link WHERE projeto_id = ? ORDER BY ordem ASC',
+    [id]
+  )
+  return c.json({ ...parseRow(row), links: linkRows })
+})
 
 // GET /api/projects?q=&activeOnly=&limit=
 projects.get('/', async (c) => {
@@ -82,22 +105,33 @@ projects.post('/', async (c) => {
   if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
   if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
   const ativo = body.ativo === true || body.ativo === 1 ? 1 : 0
+  const notas = body.notas ?? null
   const instituicao_ids = Array.isArray(body.instituicao_ids)
     ? body.instituicao_ids.map(Number).filter(Boolean)
+    : []
+  const validLinks = Array.isArray(body.links)
+    ? body.links.filter(l => l?.url?.trim())
     : []
 
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
     const [result] = await conn.query(
-      'INSERT INTO projeto (nome, ativo) VALUES (?, ?)',
-      [nome, ativo]
+      'INSERT INTO projeto (nome, ativo, notas) VALUES (?, ?, ?)',
+      [nome, ativo, notas]
     )
     const projetoId = result.insertId
     for (const instId of instituicao_ids) {
       await conn.query(
         'INSERT IGNORE INTO projeto_instituicao (projeto_id, instituicao_id) VALUES (?, ?)',
         [projetoId, instId]
+      )
+    }
+    for (let i = 0; i < validLinks.length; i++) {
+      const l = validLinks[i]
+      await conn.query(
+        'INSERT IGNORE INTO projeto_link (projeto_id, nome, url, ordem) VALUES (?, ?, ?, ?)',
+        [projetoId, l.nome?.trim() || null, l.url.trim(), i]
       )
     }
     await conn.commit()
@@ -120,16 +154,20 @@ projects.put('/:id', async (c) => {
   if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
   if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
   const ativo = body.ativo === true || body.ativo === 1 ? 1 : 0
+  const notas = body.notas ?? null
   const instituicao_ids = Array.isArray(body.instituicao_ids)
     ? body.instituicao_ids.map(Number).filter(Boolean)
+    : []
+  const validLinks = Array.isArray(body.links)
+    ? body.links.filter(l => l?.url?.trim())
     : []
 
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
     const [result] = await conn.query(
-      'UPDATE projeto SET nome=?, ativo=? WHERE id=?',
-      [nome, ativo, id]
+      'UPDATE projeto SET nome=?, ativo=?, notas=? WHERE id=?',
+      [nome, ativo, notas, id]
     )
     if (result.affectedRows === 0) {
       await conn.rollback()
@@ -140,6 +178,14 @@ projects.put('/:id', async (c) => {
       await conn.query(
         'INSERT IGNORE INTO projeto_instituicao (projeto_id, instituicao_id) VALUES (?, ?)',
         [id, instId]
+      )
+    }
+    await conn.query('DELETE FROM projeto_link WHERE projeto_id=?', [id])
+    for (let i = 0; i < validLinks.length; i++) {
+      const l = validLinks[i]
+      await conn.query(
+        'INSERT IGNORE INTO projeto_link (projeto_id, nome, url, ordem) VALUES (?, ?, ?, ?)',
+        [id, l.nome?.trim() || null, l.url.trim(), i]
       )
     }
     await conn.commit()

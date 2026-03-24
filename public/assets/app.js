@@ -4,6 +4,7 @@ function app() {
   // instanceof checks and slot access, causing setContents() to throw silently.
   let _quillEditor = null
   let _quillViewer = null
+  let _quillProjectEditor = null
 
   return {
     // Auth state
@@ -187,6 +188,9 @@ function app() {
     showProjectForm: false,
     projectInstSearch: '',
     showProjectInstDropdown: false,
+    projectLinks: [],
+    projectLinkNome: '',
+    projectLinkUrl: '',
 
     // Institutions list (tab)
     institutionListLoading: false,
@@ -403,6 +407,48 @@ function app() {
             if (text) {
               _quillEditor.insertText(range.index, text, 'user')
               _quillEditor.setSelection(range.index + text.length, 0, 'user')
+            }
+          }, true)
+        }
+        if (!_quillProjectEditor) {
+          _quillProjectEditor = new Quill('#quill-project-editor', {
+            theme: 'snow',
+            placeholder: 'Digite as notas do projeto...',
+            modules: {
+              toolbar: [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['clean']
+              ],
+              clipboard: { matchVisual: false }
+            }
+          })
+          _quillProjectEditor.root.addEventListener('paste', (e) => {
+            e.preventDefault()
+            e.stopImmediatePropagation()
+            const clipboard = e.clipboardData || window.clipboardData
+            if (!clipboard) return
+            const html = clipboard.getData('text/html')
+            const text = clipboard.getData('text/plain') || ''
+            const range = _quillProjectEditor.getSelection(true)
+                       || { index: _quillProjectEditor.getLength() - 1, length: 0 }
+            if (range.length) {
+              _quillProjectEditor.deleteText(range.index, range.length, 'user')
+            }
+            if (html) {
+              try {
+                const delta = _quillProjectEditor.clipboard.convert({ html, text })
+                _quillProjectEditor.updateContents(
+                  { ops: [{ retain: range.index }, ...delta.ops] }, 'user'
+                )
+                _quillProjectEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
+                return
+              } catch (e) { console.error('Paste HTML failed:', e) }
+            }
+            if (text) {
+              _quillProjectEditor.insertText(range.index, text, 'user')
+              _quillProjectEditor.setSelection(range.index + text.length, 0, 'user')
             }
           }, true)
         }
@@ -1222,15 +1268,34 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       this.projectForm = { nome: '', ativo: true, instituicao_ids: new Set() }
       this.projectFormErrors = {}
       this.projectInstSearch = ''
+      this.projectLinks = []
+      this.projectLinkNome = ''
+      this.projectLinkUrl = ''
       this.showProjectForm = true
+      requestAnimationFrame(() => {
+        if (_quillProjectEditor) _quillProjectEditor.setContents([{ insert: '\n' }])
+      })
     },
 
-    openEditProject(p) {
+    async openEditProject(p) {
       this.editingProject = p.id
       this.projectForm = { nome: p.nome, ativo: p.ativo, instituicao_ids: new Set(p.instituicao_ids || []) }
       this.projectFormErrors = {}
       this.projectInstSearch = ''
+      this.projectLinks = []
+      this.projectLinkNome = ''
+      this.projectLinkUrl = ''
       this.showProjectForm = true
+      try {
+        const res = await fetch(`/api/projects/${p.id}/detail`)
+        if (res.ok) {
+          const detail = await res.json()
+          this.projectLinks = (detail.links || []).map(l => ({ nome: l.nome || '', url: l.url }))
+          requestAnimationFrame(() => {
+            if (_quillProjectEditor) this.loadNotasIntoQuill(_quillProjectEditor, detail.notas)
+          })
+        }
+      } catch { /* silently ignore — form still usable */ }
     },
 
     cancelProjectForm() {
@@ -1239,6 +1304,10 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       this.projectFormErrors = {}
       this.projectInstSearch = ''
       this.showProjectInstDropdown = false
+      this.projectLinks = []
+      this.projectLinkNome = ''
+      this.projectLinkUrl = ''
+      if (_quillProjectEditor) _quillProjectEditor.setContents([{ insert: '\n' }])
     },
 
     async saveProject() {
@@ -1249,6 +1318,13 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       }
       this.projectFormLoading = true
       const isNew = this.editingProject === null
+      const notasPayload = (() => {
+        if (!_quillProjectEditor) return null
+        const delta = this.cleanDelta(_quillProjectEditor.getContents())
+        const text = delta.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim()
+        if (!text) return null
+        return JSON.stringify(delta)
+      })()
       try {
         const res = await fetch(isNew ? '/api/projects' : `/api/projects/${this.editingProject}`, {
           method: isNew ? 'POST' : 'PUT',
@@ -1257,6 +1333,8 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
             nome: this.projectForm.nome,
             ativo: this.projectForm.ativo,
             instituicao_ids: Array.from(this.projectForm.instituicao_ids),
+            notas: notasPayload,
+            links: this.projectLinks.map(l => ({ nome: l.nome || null, url: l.url })),
           })
         })
         const body = await res.json()
@@ -1414,6 +1492,19 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
 
     removeProjectInst(id) {
       this.projectForm.instituicao_ids.delete(id)
+    },
+
+    addProjectLink() {
+      const url = this.projectLinkUrl.trim()
+      if (!url) return
+      const nome = this.projectLinkNome.trim()
+      this.projectLinks.push({ nome, url })
+      this.projectLinkNome = ''
+      this.projectLinkUrl = ''
+    },
+
+    removeProjectLink(index) {
+      this.projectLinks.splice(index, 1)
     },
 
     async handleProjectInstEnter() {

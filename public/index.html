@@ -154,6 +154,14 @@
                 class="px-3 py-2 text-sm font-medium transition-colors">
                 Instituições
               </button>
+              <button
+                @click="activeTab = 'maintenance'"
+                :class="activeTab === 'maintenance'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'"
+                class="px-3 py-2 text-sm font-medium transition-colors">
+                Manutenção
+              </button>
             </nav>
 
             <button
@@ -797,6 +805,153 @@
           </div>
 
         </div><!-- /institutions section -->
+
+        <!-- ================================================================ -->
+        <!-- Maintenance Section                                               -->
+        <!-- ================================================================ -->
+        <div x-show="activeTab === 'maintenance'">
+
+          <div class="mb-6">
+            <h2 class="text-xl font-semibold text-gray-900">Manutenção</h2>
+            <p class="text-sm text-gray-500 mt-1">Operações de manutenção dos dados do sistema.</p>
+          </div>
+
+          <!-- Substituição de Projetos -->
+          <div class="bg-white rounded-xl border border-gray-200 p-6 max-w-2xl">
+            <h3 class="text-base font-semibold text-gray-900 mb-1">Substituição de Projetos</h3>
+            <p class="text-sm text-gray-500 mb-5">Substitui, em todos os registros de reunião, um projeto por outro. Utilize para consolidar projetos duplicados ou renomeados.</p>
+
+            <!-- DE / PARA fields -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+
+              <!-- DE -->
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">De (origem)</label>
+                <div x-show="maintReplaceFrom" class="flex items-center gap-2 mb-1">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-800 text-sm rounded-full">
+                    <span x-text="maintReplaceFrom?.nome"></span>
+                    <button type="button" @click="maintReplaceFrom = null; maintReplaceFromSearch = ''; maintDryRunResult = null" class="text-red-500 hover:text-red-700 leading-none">&times;</button>
+                  </span>
+                </div>
+                <div x-show="!maintReplaceFrom" class="relative" @click.away="showMaintFromDropdown = false">
+                  <input
+                    x-model="maintReplaceFromSearch"
+                    type="text"
+                    placeholder="Buscar projeto de origem..."
+                    @focus="showMaintFromDropdown = true"
+                    @input="showMaintFromDropdown = true"
+                    @keydown.escape="showMaintFromDropdown = false"
+                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                    autocomplete="off"
+                  />
+                  <div x-show="showMaintFromDropdown"
+                       class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+                    <div x-show="filteredMaintFromProjects.length === 0"
+                         class="px-3 py-2 text-sm text-gray-400">Nenhum projeto encontrado.</div>
+                    <template x-for="pr in filteredMaintFromProjects" :key="pr.id">
+                      <div @mousedown.prevent="maintReplaceFrom = pr; maintReplaceFromSearch = ''; showMaintFromDropdown = false; maintDryRunResult = null"
+                           class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
+                        <span x-text="pr.nome" class="font-medium text-gray-900"></span>
+                        <span x-show="pr.instituicao_nomes" x-text="' · ' + pr.instituicao_nomes" class="text-gray-400 text-xs"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PARA -->
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Para (destino)</label>
+                <div x-show="maintReplaceTo" class="flex items-center gap-2 mb-1">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                    <span x-text="maintReplaceTo?.nome"></span>
+                    <button type="button" @click="maintReplaceTo = null; maintReplaceToSearch = ''; maintDryRunResult = null" class="text-green-500 hover:text-green-700 leading-none">&times;</button>
+                  </span>
+                </div>
+                <div x-show="!maintReplaceTo" class="relative" @click.away="showMaintToDropdown = false">
+                  <input
+                    x-model="maintReplaceToSearch"
+                    type="text"
+                    placeholder="Buscar projeto de destino..."
+                    @focus="showMaintToDropdown = true"
+                    @input="showMaintToDropdown = true"
+                    @keydown.escape="showMaintToDropdown = false"
+                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
+                    autocomplete="off"
+                  />
+                  <div x-show="showMaintToDropdown"
+                       class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+                    <template x-for="pr in filteredMaintToProjects" :key="pr.id">
+                      <div @mousedown.prevent="maintReplaceTo = pr; maintReplaceToSearch = ''; showMaintToDropdown = false; maintDryRunResult = null"
+                           class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm">
+                        <span x-text="pr.nome" class="font-medium text-gray-900"></span>
+                        <span x-show="pr.instituicao_nomes" x-text="' · ' + pr.instituicao_nomes" class="text-gray-400 text-xs"></span>
+                      </div>
+                    </template>
+                    <!-- Create new project option (US2) -->
+                    <div x-show="filteredMaintToProjects.length === 0 && maintReplaceToSearch.trim() !== ''"
+                         @mousedown.prevent="maintCreateProject(maintReplaceToSearch.trim())"
+                         class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm text-blue-600 font-medium border-t border-gray-100">
+                      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                      </svg>
+                      <span>Criar projeto "<span x-text="maintReplaceToSearch.trim()"></span>"</span>
+                    </div>
+                    <div x-show="filteredMaintToProjects.length === 0 && maintReplaceToSearch.trim() === ''"
+                         class="px-3 py-2 text-sm text-gray-400">Nenhum projeto encontrado.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Validation warning -->
+            <p x-show="maintSameProject" class="text-amber-600 text-sm mb-3">O projeto de origem e destino não podem ser iguais.</p>
+            <p x-show="maintReplaceError" x-text="maintReplaceError" class="text-red-600 text-sm mb-3"></p>
+
+            <!-- Simulate button -->
+            <button
+              @click="maintSimulate()"
+              :disabled="!maintReplaceFrom || !maintReplaceTo || maintSameProject || maintReplaceLoading"
+              class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <span x-show="!maintReplaceLoading">Simular (Dry Run)</span>
+              <span x-show="maintReplaceLoading">Simulando...</span>
+            </button>
+
+            <!-- Dry run results -->
+            <div x-show="maintDryRunResult !== null" class="mt-5">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="text-sm font-medium text-gray-700">Reuniões afetadas:</span>
+                <span class="bg-indigo-100 text-indigo-700 rounded-full px-2.5 py-0.5 text-xs font-medium" x-text="maintDryRunResult?.count ?? 0"></span>
+              </div>
+
+              <!-- No meetings found -->
+              <p x-show="maintDryRunResult?.count === 0"
+                 class="text-sm text-gray-500 italic">Nenhuma reunião encontrada com o projeto de origem selecionado.</p>
+
+              <!-- Affected meetings list -->
+              <ul x-show="maintDryRunResult?.count > 0" class="space-y-1 mb-4 max-h-48 overflow-y-auto">
+                <template x-for="r in (maintDryRunResult?.affected ?? [])" :key="r.id">
+                  <li class="text-sm text-gray-700 flex items-start gap-2">
+                    <span class="text-gray-400 shrink-0">•</span>
+                    <span><span class="font-medium" x-text="r.data_fmt"></span> — <span class="text-gray-500" x-text="r.participantes_nomes"></span></span>
+                  </li>
+                </template>
+              </ul>
+
+              <!-- Confirm button -->
+              <button
+                x-show="maintDryRunResult?.count > 0"
+                @click="maintConfirm()"
+                :disabled="maintReplaceLoading"
+                class="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                <span x-show="!maintReplaceLoading">Confirmar substituição</span>
+                <span x-show="maintReplaceLoading">Executando...</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div><!-- /maintenance section -->
 
       </main>
 

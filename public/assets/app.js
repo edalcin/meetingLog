@@ -112,6 +112,42 @@ function app() {
       })
     },
 
+    // Maintenance — replace project
+    maintReplaceFrom: null,
+    maintReplaceTo: null,
+    maintReplaceFromSearch: '',
+    maintReplaceToSearch: '',
+    showMaintFromDropdown: false,
+    showMaintToDropdown: false,
+    maintDryRunResult: null,
+    maintReplaceLoading: false,
+    maintReplaceError: '',
+
+    get filteredMaintFromProjects() {
+      const q = this.maintReplaceFromSearch.toLowerCase()
+      return this.allProjects.filter(pr => {
+        if (this.maintReplaceFrom && pr.id === this.maintReplaceFrom.id) return false
+        if (!q) return true
+        return pr.nome.toLowerCase().includes(q) ||
+          (pr.instituicao_nomes && pr.instituicao_nomes.toLowerCase().includes(q))
+      })
+    },
+
+    get filteredMaintToProjects() {
+      const q = this.maintReplaceToSearch.toLowerCase()
+      return this.allProjects.filter(pr => {
+        if (this.maintReplaceTo && pr.id === this.maintReplaceTo.id) return false
+        if (!q) return true
+        return pr.nome.toLowerCase().includes(q) ||
+          (pr.instituicao_nomes && pr.instituicao_nomes.toLowerCase().includes(q))
+      })
+    },
+
+    get maintSameProject() {
+      return this.maintReplaceFrom && this.maintReplaceTo &&
+             this.maintReplaceFrom.id === this.maintReplaceTo.id
+    },
+
     get filteredProjectsForFilter() {
       const q = this.filterProjSearch.toLowerCase()
       return this.allProjects.filter(pr => {
@@ -314,6 +350,7 @@ function app() {
         if (tab === 'projects') this.loadProjects()
         if (tab === 'participants') this.loadParticipantList()
         if (tab === 'institutions') this.loadInstitutionList()
+        if (tab === 'maintenance') this.loadProjects()
       })
       requestAnimationFrame(() => {
         if (!_quillEditor) {
@@ -1017,6 +1054,70 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       win.document.close()
       win.focus()
       win.print()
+    },
+
+    async maintSimulate() {
+      this.maintReplaceError = ''
+      this.maintDryRunResult = null
+      this.maintReplaceLoading = true
+      try {
+        const res = await fetch('/api/maintenance/replace-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from_id: this.maintReplaceFrom.id, to_id: this.maintReplaceTo.id, dry_run: true })
+        })
+        const data = await res.json()
+        if (!res.ok) { this.maintReplaceError = data.error || 'Erro ao simular substituição.'; return }
+        this.maintDryRunResult = data
+      } catch {
+        this.maintReplaceError = 'Erro de conexão ao simular substituição.'
+      } finally {
+        this.maintReplaceLoading = false
+      }
+    },
+
+    async maintConfirm() {
+      this.maintReplaceError = ''
+      this.maintReplaceLoading = true
+      try {
+        const res = await fetch('/api/maintenance/replace-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from_id: this.maintReplaceFrom.id, to_id: this.maintReplaceTo.id, dry_run: false })
+        })
+        const data = await res.json()
+        if (!res.ok) { this.maintReplaceError = data.error || 'Erro ao executar substituição.'; return }
+        this.showToast(`Substituição concluída: ${data.updated} reunião(ões) atualizadas.`)
+        // Reset form
+        this.maintReplaceFrom = null
+        this.maintReplaceTo = null
+        this.maintReplaceFromSearch = ''
+        this.maintReplaceToSearch = ''
+        this.maintDryRunResult = null
+      } catch {
+        this.maintReplaceError = 'Erro de conexão ao executar substituição.'
+      } finally {
+        this.maintReplaceLoading = false
+      }
+    },
+
+    async maintCreateProject(nome) {
+      this.showMaintToDropdown = false
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, ativo: true })
+        })
+        const projeto = await res.json()
+        if (!res.ok) { this.showToast(projeto.error || 'Erro ao criar projeto.', true); return }
+        this.allProjects = [projeto, ...this.allProjects]
+        this.maintReplaceTo = projeto
+        this.maintReplaceToSearch = ''
+        this.maintDryRunResult = null
+      } catch {
+        this.showToast('Erro de conexão ao criar projeto.', true)
+      }
     },
 
     async deleteMeeting(id) {

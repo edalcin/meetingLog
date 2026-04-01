@@ -5,6 +5,7 @@ function app() {
   let _quillEditor = null
   let _quillViewer = null
   let _quillProjectEditor = null
+  let _quillParticipantEditor = null
 
   return {
     // Auth state
@@ -54,10 +55,11 @@ function app() {
     showInstituicaoDropdown: false,
     participantSortCol: 'nome',
     participantSortOrder: 'asc',
+    participantStatusFilter: '',
 
     // Participant edit modal
     editingParticipant: null,
-    participantForm: { nome: '', instituicao: '', cargo: '', email: '' },
+    participantForm: { nome: '', instituicao: '', lotacao: '', cargo: '', email: '', ativo: true, notas: '' },
     participantFormErrors: {},
     participantFormLoading: false,
     showParticipantForm: false,
@@ -66,9 +68,17 @@ function app() {
 
     get filteredParticipantList() {
       const q = this.filterInstituicao.toLowerCase()
+      const status = this.participantStatusFilter
       let list = q
         ? this.participantListAll.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
         : this.participantListAll
+      if (status) {
+        list = list.filter(p => {
+          if (status === 'ativo' && !p.ativo) return false
+          if (status === 'inativo' && p.ativo) return false
+          return true
+        })
+      }
       return [...list].sort((a, b) => {
         const col = this.participantSortCol
         if (col === 'reuniao_count') {
@@ -94,7 +104,8 @@ function app() {
         if (this.selectedParticipantIds.has(p.id)) return false
         if (!q) return true
         return p.nome.toLowerCase().includes(q) ||
-          (p.instituicao && p.instituicao.toLowerCase().includes(q))
+          (p.instituicao && p.instituicao.toLowerCase().includes(q)) ||
+          (p.lotacao && p.lotacao.toLowerCase().includes(q))
       })
     },
 
@@ -109,7 +120,8 @@ function app() {
       return this.allParticipants.filter(p => {
         if (this.filterPartIds.has(p.id)) return false
         if (!q) return true
-        return p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q))
+        return p.nome.toLowerCase().includes(q) || (p.instituicao && p.instituicao.toLowerCase().includes(q)) ||
+          (p.lotacao && p.lotacao.toLowerCase().includes(q))
       })
     },
 
@@ -452,6 +464,48 @@ function app() {
             }
           }, true)
         }
+        if (!_quillParticipantEditor) {
+          _quillParticipantEditor = new Quill('#quill-participant-editor', {
+            theme: 'snow',
+            placeholder: 'Digite as notas do participante...',
+            modules: {
+              toolbar: [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['clean']
+              ],
+              clipboard: { matchVisual: false }
+            }
+          })
+          _quillParticipantEditor.root.addEventListener('paste', (e) => {
+            e.preventDefault()
+            e.stopImmediatePropagation()
+            const clipboard = e.clipboardData || window.clipboardData
+            if (!clipboard) return
+            const html = clipboard.getData('text/html')
+            const text = clipboard.getData('text/plain') || ''
+            const range = _quillParticipantEditor.getSelection(true)
+                       || { index: _quillParticipantEditor.getLength() - 1, length: 0 }
+            if (range.length) {
+              _quillParticipantEditor.deleteText(range.index, range.length, 'user')
+            }
+            if (html) {
+              try {
+                const delta = _quillParticipantEditor.clipboard.convert({ html, text })
+                _quillParticipantEditor.updateContents(
+                  { ops: [{ retain: range.index }, ...delta.ops] }, 'user'
+                )
+                _quillParticipantEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
+                return
+              } catch (e) { console.error('Paste HTML failed:', e) }
+            }
+            if (text) {
+              _quillParticipantEditor.insertText(range.index, text, 'user')
+              _quillParticipantEditor.setSelection(range.index + text.length, 0, 'user')
+            }
+          }, true)
+        }
       })
     },
 
@@ -571,7 +625,7 @@ function app() {
     async loadParticipants() {
       if (this.allParticipants.length > 0) return
       try {
-        const res = await fetch('/api/participants?limit=500')
+        const res = await fetch('/api/participants?limit=500&ativo=1')
         if (!res.ok) throw new Error()
         const data = await res.json()
         this.allParticipants = data.data
@@ -1194,18 +1248,32 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
 
     openNewParticipant() {
       this.editingParticipant = null
-      this.participantForm = { nome: '', instituicao: '', cargo: '', email: '' }
+      this.participantForm = { nome: '', instituicao: '', lotacao: '', cargo: '', email: '', ativo: true, notas: '' }
       this.participantFormErrors = {}
       this.participantInstSearch = ''
       this.showParticipantForm = true
+      requestAnimationFrame(() => {
+        if (_quillParticipantEditor) _quillParticipantEditor.setContents([{ insert: '\n' }])
+      })
     },
 
     openEditParticipant(p) {
       this.editingParticipant = p.id
-      this.participantForm = { nome: p.nome, instituicao: p.instituicao ?? '', cargo: p.cargo ?? '', email: p.email ?? '' }
+      this.participantForm = {
+        nome: p.nome,
+        instituicao: p.instituicao ?? '',
+        lotacao: p.lotacao ?? '',
+        cargo: p.cargo ?? '',
+        email: p.email ?? '',
+        ativo: p.ativo !== false,
+        notas: p.notas ?? ''
+      }
       this.participantFormErrors = {}
       this.participantInstSearch = p.instituicao ?? ''
       this.showParticipantForm = true
+      requestAnimationFrame(() => {
+        if (_quillParticipantEditor) this.loadNotasIntoQuill(_quillParticipantEditor, p.notas)
+      })
     },
 
     cancelParticipantForm() {
@@ -1214,6 +1282,7 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       this.participantFormErrors = {}
       this.participantInstSearch = ''
       this.showParticipantInstDropdown = false
+      if (_quillParticipantEditor) _quillParticipantEditor.setContents([{ insert: '\n' }])
     },
 
     async saveParticipant() {
@@ -1224,22 +1293,37 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       }
       this.participantFormLoading = true
       const isNew = this.editingParticipant === null
+      const notasPayload = (() => {
+        if (!_quillParticipantEditor) return this.participantForm.notas || null
+        const delta = this.cleanDelta(_quillParticipantEditor.getContents())
+        const text = delta.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim()
+        if (!text) return null
+        return JSON.stringify(delta)
+      })()
       try {
         const res = await fetch(isNew ? '/api/participants' : `/api/participants/${this.editingParticipant}`, {
           method: isNew ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.participantForm)
+          body: JSON.stringify({
+            nome: this.participantForm.nome,
+            instituicao: this.participantForm.instituicao,
+            lotacao: this.participantForm.lotacao,
+            cargo: this.participantForm.cargo,
+            email: this.participantForm.email,
+            ativo: this.participantForm.ativo,
+            notas: notasPayload
+          })
         })
         const body = await res.json()
         if (!res.ok) { this.showToast(body.error || 'Erro ao salvar', true); return }
         if (isNew) {
           this.participantListAll.push(body)
-          this.allParticipants.push(body)
+          if (body.ativo !== false) this.allParticipants.push(body)
         } else {
           const idx = this.participantListAll.findIndex(p => p.id === this.editingParticipant)
           if (idx >= 0) this.participantListAll[idx] = body
-          const idx2 = this.allParticipants.findIndex(p => p.id === this.editingParticipant)
-          if (idx2 >= 0) this.allParticipants[idx2] = body
+          this.allParticipants = this.allParticipants.filter(p => p.id !== this.editingParticipant)
+          if (body.ativo !== false) this.allParticipants.push(body)
         }
         this.cancelParticipantForm()
         this.showToast(isNew ? 'Participante criado!' : 'Participante atualizado!')

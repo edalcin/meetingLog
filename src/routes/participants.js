@@ -3,17 +3,22 @@ import pool from '../db.js'
 
 const participants = new Hono()
 
-// GET /api/participants?q=&limit=
+// GET /api/participants?q=&limit=&ativo=
 participants.get('/', async (c) => {
   const q = c.req.query('q') ?? ''
   const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') ?? 200)))
+  const ativo = c.req.query('ativo')
 
-  let where = ''
+  const conditions = []
   const params = []
   if (q) {
-    where = 'WHERE nome LIKE ? OR instituicao LIKE ?'
-    params.push(`%${q}%`, `%${q}%`)
+    conditions.push('(nome LIKE ? OR instituicao LIKE ? OR lotacao LIKE ?)')
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`)
   }
+  if (ativo === '1') {
+    conditions.push('ativo = TRUE')
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
   const [[{ total }]] = await pool.query(
     `SELECT COUNT(*) AS total FROM participante ${where}`,
@@ -21,7 +26,7 @@ participants.get('/', async (c) => {
   )
 
   const [rows] = await pool.query(
-    `SELECT id, nome, instituicao, cargo, email,
+    `SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas,
             (SELECT COUNT(*) FROM reuniao_participante WHERE participante_id = participante.id) AS reuniao_count
      FROM participante ${where} ORDER BY nome ASC LIMIT ?`,
     [...params, limit]
@@ -37,12 +42,22 @@ participants.post('/', async (c) => {
   if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
   if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
 
+  const ativo = body.ativo !== false
+
   const [result] = await pool.query(
-    'INSERT INTO participante (nome, instituicao, cargo, email) VALUES (?, ?, ?, ?)',
-    [nome, body.instituicao?.trim() || null, body.cargo?.trim() || null, body.email?.trim() || null]
+    'INSERT INTO participante (nome, instituicao, lotacao, cargo, email, ativo, notas) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [
+      nome,
+      body.instituicao?.trim() || null,
+      body.lotacao?.trim() || null,
+      body.cargo?.trim() || null,
+      body.email?.trim() || null,
+      ativo,
+      body.notas || null
+    ]
   )
   const [[row]] = await pool.query(
-    'SELECT id, nome, instituicao, cargo, email FROM participante WHERE id = ?',
+    'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id = ?',
     [result.insertId]
   )
   return c.json(row, 201)
@@ -56,13 +71,25 @@ participants.put('/:id', async (c) => {
   const nome = body.nome?.trim()
   if (!nome) return c.json({ error: 'Nome é obrigatório' }, 400)
   if (nome.length > 255) return c.json({ error: 'Nome muito longo' }, 400)
+
+  const ativo = body.ativo !== false
+
   const [result] = await pool.query(
-    'UPDATE participante SET nome=?, instituicao=?, cargo=?, email=? WHERE id=?',
-    [nome, body.instituicao?.trim() || null, body.cargo?.trim() || null, body.email?.trim() || null, id]
+    'UPDATE participante SET nome=?, instituicao=?, lotacao=?, cargo=?, email=?, ativo=?, notas=? WHERE id=?',
+    [
+      nome,
+      body.instituicao?.trim() || null,
+      body.lotacao?.trim() || null,
+      body.cargo?.trim() || null,
+      body.email?.trim() || null,
+      ativo,
+      body.notas || null,
+      id
+    ]
   )
   if (result.affectedRows === 0) return c.json({ error: 'Participante não encontrado' }, 404)
   const [[row]] = await pool.query(
-    'SELECT id, nome, instituicao, cargo, email FROM participante WHERE id=?', [id]
+    'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id=?', [id]
   )
   return c.json(row)
 })

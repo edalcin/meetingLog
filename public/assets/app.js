@@ -7,6 +7,50 @@ function app() {
   let _quillProjectEditor = null
   let _quillParticipantEditor = null
 
+  function _ensureParticipantEditor() {
+    if (_quillParticipantEditor) return
+    _quillParticipantEditor = new Quill('#quill-participant-editor', {
+      theme: 'snow',
+      placeholder: 'Digite as notas do participante...',
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['clean']
+        ],
+        clipboard: { matchVisual: false }
+      }
+    })
+    _quillParticipantEditor.root.addEventListener('paste', (e) => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      const clipboard = e.clipboardData || window.clipboardData
+      if (!clipboard) return
+      const html = clipboard.getData('text/html')
+      const text = clipboard.getData('text/plain') || ''
+      const range = _quillParticipantEditor.getSelection(true)
+                 || { index: _quillParticipantEditor.getLength() - 1, length: 0 }
+      if (range.length) {
+        _quillParticipantEditor.deleteText(range.index, range.length, 'user')
+      }
+      if (html) {
+        try {
+          const delta = _quillParticipantEditor.clipboard.convert({ html, text })
+          _quillParticipantEditor.updateContents(
+            { ops: [{ retain: range.index }, ...delta.ops] }, 'user'
+          )
+          _quillParticipantEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
+          return
+        } catch (e) { console.error('Paste HTML failed:', e) }
+      }
+      if (text) {
+        _quillParticipantEditor.insertText(range.index, text, 'user')
+        _quillParticipantEditor.setSelection(range.index + text.length, 0, 'user')
+      }
+    }, true)
+  }
+
   return {
     // Auth state
     authenticated: false,
@@ -461,48 +505,6 @@ function app() {
             if (text) {
               _quillProjectEditor.insertText(range.index, text, 'user')
               _quillProjectEditor.setSelection(range.index + text.length, 0, 'user')
-            }
-          }, true)
-        }
-        if (!_quillParticipantEditor) {
-          _quillParticipantEditor = new Quill('#quill-participant-editor', {
-            theme: 'snow',
-            placeholder: 'Digite as notas do participante...',
-            modules: {
-              toolbar: [
-                [{ header: [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline'],
-                [{ list: 'ordered' }, { list: 'bullet' }],
-                ['clean']
-              ],
-              clipboard: { matchVisual: false }
-            }
-          })
-          _quillParticipantEditor.root.addEventListener('paste', (e) => {
-            e.preventDefault()
-            e.stopImmediatePropagation()
-            const clipboard = e.clipboardData || window.clipboardData
-            if (!clipboard) return
-            const html = clipboard.getData('text/html')
-            const text = clipboard.getData('text/plain') || ''
-            const range = _quillParticipantEditor.getSelection(true)
-                       || { index: _quillParticipantEditor.getLength() - 1, length: 0 }
-            if (range.length) {
-              _quillParticipantEditor.deleteText(range.index, range.length, 'user')
-            }
-            if (html) {
-              try {
-                const delta = _quillParticipantEditor.clipboard.convert({ html, text })
-                _quillParticipantEditor.updateContents(
-                  { ops: [{ retain: range.index }, ...delta.ops] }, 'user'
-                )
-                _quillParticipantEditor.setSelection(range.index + delta.length() - 1, 0, 'user')
-                return
-              } catch (e) { console.error('Paste HTML failed:', e) }
-            }
-            if (text) {
-              _quillParticipantEditor.insertText(range.index, text, 'user')
-              _quillParticipantEditor.setSelection(range.index + text.length, 0, 'user')
             }
           }, true)
         }
@@ -1253,7 +1255,8 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       this.participantInstSearch = ''
       this.showParticipantForm = true
       requestAnimationFrame(() => {
-        if (_quillParticipantEditor) _quillParticipantEditor.setContents([{ insert: '\n' }])
+        _ensureParticipantEditor()
+        _quillParticipantEditor.setContents([{ insert: '\n' }])
       })
     },
 
@@ -1272,7 +1275,8 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
       this.participantInstSearch = p.instituicao ?? ''
       this.showParticipantForm = true
       requestAnimationFrame(() => {
-        if (_quillParticipantEditor) this.loadNotasIntoQuill(_quillParticipantEditor, p.notas)
+        _ensureParticipantEditor()
+        this.loadNotasIntoQuill(_quillParticipantEditor, p.notas)
       })
     },
 

@@ -1470,8 +1470,22 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
           const idx = this.allProjects.findIndex(p => p.id === this.editingProject)
           if (idx >= 0) this.allProjects[idx] = body
         }
+        // Remove newly deactivated participants from the active-only meeting form list
+        if (body.deactivated_participants?.length > 0) {
+          const deactIds = new Set(body.deactivated_participants.map(p => p.id))
+          this.allParticipants = this.allParticipants.filter(p => !deactIds.has(p.id))
+          // Also update participantListAll so the participants tab reflects the new status
+          for (const dp of body.deactivated_participants) {
+            const pi = this.participantListAll.findIndex(p => p.id === dp.id)
+            if (pi >= 0) this.participantListAll[pi] = { ...this.participantListAll[pi], ativo: false }
+          }
+        }
         this.cancelProjectForm()
-        this.showToast(isNew ? 'Projeto criado!' : 'Projeto atualizado!')
+        const deactCount = body.deactivated_participants?.length ?? 0
+        const toast = isNew ? 'Projeto criado!' :
+          deactCount > 0 ? `Projeto atualizado! ${deactCount} participante(s) marcado(s) como inativo(s).`
+                         : 'Projeto atualizado!'
+        this.showToast(toast)
       } catch {
         this.showToast('Erro de conexão.', true)
       } finally {

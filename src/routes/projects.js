@@ -165,6 +165,12 @@ projects.put('/:id', async (c) => {
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
+
+    // Capture previous ativo to detect deactivation
+    const [[prev]] = await conn.query('SELECT ativo FROM projeto WHERE id=?', [id])
+    if (!prev) { await conn.rollback(); return c.json({ error: 'Projeto não encontrado' }, 404) }
+    const wasActive = Boolean(prev.ativo)
+
     const [result] = await conn.query(
       'UPDATE projeto SET nome=?, ativo=?, notas=? WHERE id=?',
       [nome, ativo, notas, id]
@@ -188,9 +194,40 @@ projects.put('/:id', async (c) => {
         [id, l.nome?.trim() || null, l.url.trim(), i]
       )
     }
+
+    // Cascade deactivation: if project just became inactive, deactivate participants
+    // whose meetings are now exclusively linked to inactive projects
+    let deactivated_participants = []
+    if (wasActive && ativo === 0) {
+      const [candidates] = await conn.query(
+        `SELECT p.id, p.nome FROM participante p
+         WHERE p.ativo = TRUE
+           AND EXISTS (
+             SELECT 1 FROM reuniao_participante rp
+             JOIN reuniao_projeto rpj ON rpj.reuniao_id = rp.reuniao_id
+             WHERE rp.participante_id = p.id AND rpj.projeto_id = ?
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM reuniao_participante rp2
+             JOIN reuniao_projeto rpj2 ON rpj2.reuniao_id = rp2.reuniao_id
+             JOIN projeto pr ON pr.id = rpj2.projeto_id
+             WHERE rp2.participante_id = p.id AND pr.ativo = TRUE
+           )`,
+        [id]
+      )
+      if (candidates.length > 0) {
+        const ids = candidates.map(p => p.id)
+        await conn.query(
+          `UPDATE participante SET ativo = FALSE WHERE id IN (${ids.map(() => '?').join(',')})`,
+          ids
+        )
+        deactivated_participants = candidates
+      }
+    }
+
     await conn.commit()
     const row = await fetchProjectById(conn, id)
-    return c.json(row)
+    return c.json({ ...row, deactivated_participants })
   } catch (err) {
     await conn.rollback()
     throw err

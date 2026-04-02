@@ -1727,21 +1727,6 @@
                   </div>
                 </div>
 
-                <!-- Instituição / Lotação -->
-                <div x-show="participantInfo.instituicao || participantInfo.lotacao">
-                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Instituição / Lotação</span>
-                  <p class="text-gray-900 mt-0.5">
-                    <span x-text="participantInfo.instituicao || '—'"></span>
-                    <span x-show="participantInfo.lotacao" class="text-gray-500" x-text="' · ' + participantInfo.lotacao"></span>
-                  </p>
-                </div>
-
-                <!-- Cargo -->
-                <div x-show="participantInfo.cargo">
-                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Cargo</span>
-                  <p class="text-gray-900 mt-0.5" x-text="participantInfo.cargo"></p>
-                </div>
-
                 <!-- Email -->
                 <div x-show="participantInfo.email">
                   <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">E-mail</span>

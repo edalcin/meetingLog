@@ -26,7 +26,8 @@ participants.get('/', async (c) => {
   )
 
   const [rows] = await pool.query(
-    `SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas,
+    `SELECT id, nome, instituicao, lotacao, cargo, email, ativo,
+            (notas IS NOT NULL AND notas != '') AS has_notas,
             (SELECT COUNT(*) FROM reuniao_participante WHERE participante_id = participante.id) AS reuniao_count
      FROM participante ${where} ORDER BY nome ASC LIMIT ?`,
     [...params, limit]
@@ -92,6 +93,29 @@ participants.put('/:id', async (c) => {
     'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id=?', [id]
   )
   return c.json(row)
+})
+
+// GET /api/participants/:id
+participants.get('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+
+  const [[row]] = await pool.query(
+    'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id = ?',
+    [id]
+  )
+  if (!row) return c.json({ error: 'Participante não encontrado' }, 404)
+
+  const [reunioes] = await pool.query(
+    `SELECT r.id, r.data_hora, r.tipo
+     FROM reuniao_participante rp
+     JOIN reuniao r ON r.id = rp.reuniao_id
+     WHERE rp.participante_id = ?
+     ORDER BY r.data_hora DESC`,
+    [id]
+  )
+
+  return c.json({ ...row, ativo: Boolean(row.ativo), reunioes })
 })
 
 // DELETE /api/participants/:id

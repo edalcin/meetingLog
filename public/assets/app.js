@@ -6,6 +6,7 @@ function app() {
   let _quillViewer = null
   let _quillProjectEditor = null
   let _quillParticipantEditor = null
+  let _quillParticipantViewer = null
 
   function _ensureParticipantEditor() {
     if (_quillParticipantEditor) return
@@ -376,6 +377,11 @@ function app() {
           (pr.instituicao_nomes && pr.instituicao_nomes.toLowerCase().includes(q))
       })
     },
+
+    // Participant info modal (read-only "Ficha do Participante")
+    showParticipantInfo: false,
+    participantInfo: null,
+    participantInfoLoading: false,
 
     // Meeting info modal (read-only "Ficha da Reunião")
     showMeetingInfo: false,
@@ -1027,6 +1033,37 @@ function app() {
       this.viewerFile = null
       this.fileUploadError = ''
       _quillViewer = null  // x-if removes #quill-viewer from DOM on close; reset so it's re-initialized on next open
+    },
+
+    async openParticipantInfo(id) {
+      this.participantInfoLoading = true
+      this.showParticipantInfo = true
+      try {
+        const res = await fetch(`/api/participants/${id}`)
+        if (!res.ok) throw new Error()
+        this.participantInfo = await res.json()
+        this.participantInfoLoading = false
+        requestAnimationFrame(() => {
+          if (!_quillParticipantViewer) {
+            _quillParticipantViewer = new Quill('#quill-participant-viewer', {
+              theme: 'bubble',
+              readOnly: true,
+              modules: { toolbar: false }
+            })
+          }
+          this.loadNotasIntoQuill(_quillParticipantViewer, this.participantInfo.notas)
+        })
+      } catch {
+        this.showToast('Erro ao carregar participante.', true)
+        this.showParticipantInfo = false
+        this.participantInfoLoading = false
+      }
+    },
+
+    closeParticipantInfo() {
+      this.showParticipantInfo = false
+      this.participantInfo = null
+      _quillParticipantViewer = null
     },
 
     async loadFiles(meetingId) {

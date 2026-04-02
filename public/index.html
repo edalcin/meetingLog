@@ -531,12 +531,13 @@
                         <span x-show="participantSortCol === 'reuniao_count'" x-text="participantSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
+                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Info</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr x-show="participantListLoading">
-                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">
+                    <td colspan="7" class="px-4 py-12 text-center text-gray-400">
                       <div class="flex items-center justify-center gap-2">
                         <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -547,7 +548,7 @@
                     </td>
                   </tr>
                   <tr x-show="!participantListLoading && filteredParticipantList.length === 0">
-                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">Nenhum participante encontrado.</td>
+                    <td colspan="7" class="px-4 py-12 text-center text-gray-400">Nenhum participante encontrado.</td>
                   </tr>
                   <template x-for="p in filteredParticipantList" :key="p.id">
                     <tr class="hover:bg-gray-50 transition-colors">
@@ -570,6 +571,21 @@
                               class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
                               x-text="p.reuniao_count"></span>
                         <span x-show="!p.reuniao_count" class="text-gray-400">—</span>
+                      </td>
+                      <!-- Info column: ficha + notes indicator -->
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-center gap-1">
+                          <button @click="openParticipantInfo(p.id)" class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded" title="Ficha do Participante">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                          </button>
+                          <span x-show="p.has_notas" class="text-indigo-400 p-1" title="Tem notas">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                          </span>
+                        </div>
                       </td>
                       <td class="px-4 py-3 flex items-center justify-end gap-1">
                         <button @click="openEditParticipant(p)"
@@ -1661,6 +1677,102 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Ficha do Participante Modal (read-only) -->
+      <div x-show="showParticipantInfo" x-cloak
+           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4"
+           @click.self="closeParticipantInfo()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+          <!-- Loading state -->
+          <div x-show="participantInfoLoading" class="px-6 py-12 text-center text-gray-400">
+            <div class="flex items-center justify-center gap-2">
+              <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Carregando...
+            </div>
+          </div>
+
+          <!-- Content (shown once loaded) -->
+          <template x-if="!participantInfoLoading && participantInfo">
+            <div>
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h2 class="text-base font-semibold text-gray-900" x-text="participantInfo.nome"></h2>
+                <button @click="closeParticipantInfo()" class="text-gray-400 hover:text-gray-600 p-1">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="px-6 py-4 space-y-5">
+
+                <!-- Status -->
+                <div>
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
+                  <div class="mt-0.5">
+                    <span :class="participantInfo.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          x-text="participantInfo.ativo ? 'Ativo' : 'Inativo'"></span>
+                  </div>
+                </div>
+
+                <!-- Instituição / Lotação -->
+                <div x-show="participantInfo.instituicao || participantInfo.lotacao">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Instituição / Lotação</span>
+                  <p class="text-gray-900 mt-0.5">
+                    <span x-text="participantInfo.instituicao || '—'"></span>
+                    <span x-show="participantInfo.lotacao" class="text-gray-500" x-text="' · ' + participantInfo.lotacao"></span>
+                  </p>
+                </div>
+
+                <!-- Cargo -->
+                <div x-show="participantInfo.cargo">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Cargo</span>
+                  <p class="text-gray-900 mt-0.5" x-text="participantInfo.cargo"></p>
+                </div>
+
+                <!-- Email -->
+                <div x-show="participantInfo.email">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">E-mail</span>
+                  <p class="text-gray-900 mt-0.5" x-text="participantInfo.email"></p>
+                </div>
+
+                <!-- Reuniões -->
+                <div x-show="participantInfo.reunioes && participantInfo.reunioes.length > 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Reuniões</span>
+                  <ul class="mt-2 space-y-1">
+                    <template x-for="r in participantInfo.reunioes" :key="r.id">
+                      <li class="text-sm text-gray-800 flex items-center gap-2">
+                        <span class="text-gray-400">•</span>
+                        <span x-text="formatDate(r.data_hora)" class="font-medium"></span>
+                        <span :class="{
+                                'bg-green-100 text-green-700': r.tipo === 'Presencial',
+                                'bg-blue-100 text-blue-700':   r.tipo === 'Remota',
+                                'bg-purple-100 text-purple-700': r.tipo === 'Hibrida',
+                                'bg-orange-100 text-orange-700': r.tipo === 'Telefone'
+                              }"
+                              class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                              x-text="r.tipo"></span>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+
+                <!-- Notas -->
+                <div x-show="participantInfo && participantInfo.notas">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Notas</span>
+                  <div id="quill-participant-viewer" class="mt-2"></div>
+                </div>
+
+              </div>
+            </div>
+          </template>
+
         </div>
       </div>
 

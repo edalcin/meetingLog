@@ -119,7 +119,17 @@ participants.get('/:id', async (c) => {
     [id]
   )
 
-  return c.json({ ...row, ativo: Boolean(row.ativo), reunioes })
+  const [projetos] = await pool.query(
+    `SELECT DISTINCT p.id, p.nome
+     FROM reuniao_participante rp
+     JOIN reuniao_projeto rpj ON rpj.reuniao_id = rp.reuniao_id
+     JOIN projeto p ON p.id = rpj.projeto_id
+     WHERE rp.participante_id = ?
+     ORDER BY p.nome`,
+    [id]
+  )
+
+  return c.json({ ...row, ativo: Boolean(row.ativo), projetos, reunioes })
 })
 
 // DELETE /api/participants/:id

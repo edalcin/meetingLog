@@ -1700,9 +1700,15 @@
           <!-- Content (shown once loaded) -->
           <template x-if="!participantInfoLoading && participantInfo">
             <div>
-              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h2 class="text-base font-semibold text-gray-900" x-text="participantInfo.nome"></h2>
-                <button @click="closeParticipantInfo()" class="text-gray-400 hover:text-gray-600 p-1">
+              <div class="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+                <div>
+                  <h2 class="text-base font-semibold text-gray-900" x-text="participantInfo.nome"></h2>
+                  <p x-show="participantInfo.instituicao || participantInfo.lotacao || participantInfo.cargo"
+                     class="text-sm text-gray-500 mt-0.5">
+                    <span x-text="[participantInfo.instituicao, participantInfo.lotacao, participantInfo.cargo].filter(Boolean).join(' · ')"></span>
+                  </p>
+                </div>
+                <button @click="closeParticipantInfo()" class="text-gray-400 hover:text-gray-600 p-1 shrink-0">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
@@ -1747,17 +1753,10 @@
                   <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Reuniões</span>
                   <ul class="mt-2 space-y-1">
                     <template x-for="r in participantInfo.reunioes" :key="r.id">
-                      <li class="text-sm text-gray-800 flex items-center gap-2">
-                        <span class="text-gray-400">•</span>
+                      <li class="text-sm text-gray-800">
+                        <span class="text-gray-400 mr-1">•</span>
                         <span x-text="formatDate(r.data_hora)" class="font-medium"></span>
-                        <span :class="{
-                                'bg-green-100 text-green-700': r.tipo === 'Presencial',
-                                'bg-blue-100 text-blue-700':   r.tipo === 'Remota',
-                                'bg-purple-100 text-purple-700': r.tipo === 'Hibrida',
-                                'bg-orange-100 text-orange-700': r.tipo === 'Telefone'
-                              }"
-                              class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
-                              x-text="r.tipo"></span>
+                        <span x-show="r.projeto_nomes" class="text-gray-500 ml-1" x-text="'— ' + r.projeto_nomes"></span>
                       </li>
                     </template>
                   </ul>

@@ -107,10 +107,14 @@ participants.get('/:id', async (c) => {
   if (!row) return c.json({ error: 'Participante não encontrado' }, 404)
 
   const [reunioes] = await pool.query(
-    `SELECT r.id, r.data_hora, r.tipo
+    `SELECT r.id, r.data_hora,
+            COALESCE(GROUP_CONCAT(DISTINCT p.nome ORDER BY p.nome SEPARATOR ', '), '') AS projeto_nomes
      FROM reuniao_participante rp
      JOIN reuniao r ON r.id = rp.reuniao_id
+     LEFT JOIN reuniao_projeto rpj ON rpj.reuniao_id = r.id
+     LEFT JOIN projeto p ON p.id = rpj.projeto_id
      WHERE rp.participante_id = ?
+     GROUP BY r.id, r.data_hora
      ORDER BY r.data_hora DESC`,
     [id]
   )

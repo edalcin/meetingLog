@@ -46,7 +46,7 @@ participants.post('/', async (c) => {
   const ativo = body.ativo !== false
 
   const [result] = await pool.query(
-    'INSERT INTO participante (nome, instituicao, lotacao, cargo, email, ativo, notas) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO participante (nome, instituicao, lotacao, cargo, email, ativo, ativo_manual, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     [
       nome,
       body.instituicao?.trim() || null,
@@ -54,6 +54,7 @@ participants.post('/', async (c) => {
       body.cargo?.trim() || null,
       body.email?.trim() || null,
       ativo,
+      ativo,  // ativo_manual mirrors explicit user intent at creation
       body.notas || null
     ]
   )
@@ -76,7 +77,7 @@ participants.put('/:id', async (c) => {
   const ativo = body.ativo !== false
 
   const [result] = await pool.query(
-    'UPDATE participante SET nome=?, instituicao=?, lotacao=?, cargo=?, email=?, ativo=?, notas=? WHERE id=?',
+    'UPDATE participante SET nome=?, instituicao=?, lotacao=?, cargo=?, email=?, ativo=?, ativo_manual=?, notas=? WHERE id=?',
     [
       nome,
       body.instituicao?.trim() || null,
@@ -84,6 +85,7 @@ participants.put('/:id', async (c) => {
       body.cargo?.trim() || null,
       body.email?.trim() || null,
       ativo,
+      ativo,  // ativo_manual mirrors explicit user intent: protects manual reactivations from cascade
       body.notas || null,
       id
     ]

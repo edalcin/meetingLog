@@ -202,6 +202,7 @@ projects.put('/:id', async (c) => {
       const [candidates] = await conn.query(
         `SELECT p.id, p.nome FROM participante p
          WHERE p.ativo = TRUE
+           AND p.ativo_manual = FALSE
            AND EXISTS (
              SELECT 1 FROM reuniao_participante rp
              JOIN reuniao_projeto rpj ON rpj.reuniao_id = rp.reuniao_id

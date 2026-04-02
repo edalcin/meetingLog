@@ -22,7 +22,7 @@ institutions.get('/', async (c) => {
 
   const [rows] = await pool.query(
     `SELECT id, sigla, nome,
-            (SELECT COUNT(*) FROM participante_instituicao WHERE instituicao_id = instituicao.id) AS participante_count,
+            (SELECT COUNT(*) FROM participante WHERE instituicao = instituicao.sigla) AS participante_count,
             (SELECT COUNT(*) FROM projeto_instituicao WHERE instituicao_id = instituicao.id) AS projeto_count
      FROM instituicao ${where} ORDER BY sigla ASC LIMIT ?`,
     [...params, limit]
@@ -80,8 +80,11 @@ institutions.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   if (!id) return c.json({ error: 'ID inválido' }, 400)
 
+  const [[current]] = await pool.query('SELECT sigla FROM instituicao WHERE id=?', [id])
+  if (!current) return c.json({ error: 'Instituição não encontrada' }, 404)
+
   const [[{ pTotal }]] = await pool.query(
-    'SELECT COUNT(*) AS pTotal FROM participante_instituicao WHERE instituicao_id = ?', [id]
+    'SELECT COUNT(*) AS pTotal FROM participante WHERE instituicao = ?', [current.sigla]
   )
   const [[{ prTotal }]] = await pool.query(
     'SELECT COUNT(*) AS prTotal FROM projeto_instituicao WHERE instituicao_id = ?', [id]
@@ -91,8 +94,8 @@ institutions.delete('/:id', async (c) => {
     const parts = []
     if (pTotal > 0) {
       const [rows] = await pool.query(
-        'SELECT p.nome FROM participante p JOIN participante_instituicao pi ON pi.participante_id = p.id WHERE pi.instituicao_id = ? ORDER BY p.nome LIMIT 5',
-        [id]
+        'SELECT nome FROM participante WHERE instituicao = ? ORDER BY nome LIMIT 5',
+        [current.sigla]
       )
       const names = rows.map(r => r.nome).join(', ')
       const extra = pTotal > 5 ? ` e mais ${pTotal - 5}` : ''

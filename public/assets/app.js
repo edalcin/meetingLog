@@ -139,6 +139,7 @@ function app() {
 
     // Participants multi-select
     allParticipants: [],
+    allInactiveParticipants: [],
     selectedParticipantIds: new Set(),
     participantSearch: '',
     showParticipantDropdown: false,
@@ -157,7 +158,24 @@ function app() {
     get showCreateOption() {
       const q = this.participantSearch.trim()
       if (!q) return false
-      return !this.allParticipants.some(p => p.nome.toLowerCase() === q.toLowerCase())
+      if (this.allParticipants.some(p => p.nome.toLowerCase() === q.toLowerCase())) return false
+      // Suppress create when the typed name exactly matches an inactive participant
+      if (this.allInactiveParticipants.some(p => p.nome.toLowerCase() === q.toLowerCase())) return false
+      return true
+    },
+
+    get inactiveParticipantMatches() {
+      const q = this.participantSearch.trim()
+      if (q.length < 2) return []
+      const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      const qn = norm(q)
+      return this.allInactiveParticipants.filter(p => {
+        if (this.selectedParticipantIds.has(p.id)) return false
+        const pn = norm(p.nome)
+        if (pn.includes(qn) || qn.includes(pn)) return true
+        // word-prefix match: any search word (≥3 chars) is a prefix of any name word
+        return qn.split(/\s+/).some(w => w.length >= 3 && pn.split(/\s+/).some(pw => pw.startsWith(w)))
+      })
     },
 
     get filteredParticipantsForFilter() {
@@ -633,10 +651,14 @@ function app() {
     async loadParticipants() {
       if (this.allParticipants.length > 0) return
       try {
-        const res = await fetch('/api/participants?limit=500&ativo=1')
-        if (!res.ok) throw new Error()
-        const data = await res.json()
-        this.allParticipants = data.data
+        const [activeRes, inactiveRes] = await Promise.all([
+          fetch('/api/participants?limit=500&ativo=1'),
+          fetch('/api/participants?limit=500&ativo=0')
+        ])
+        if (!activeRes.ok || !inactiveRes.ok) throw new Error()
+        const [activeData, inactiveData] = await Promise.all([activeRes.json(), inactiveRes.json()])
+        this.allParticipants = activeData.data
+        this.allInactiveParticipants = inactiveData.data
       } catch {
         this.showToast('Erro ao carregar participantes', true)
       }
@@ -689,6 +711,37 @@ function app() {
         this.showParticipantDropdown = false
       } catch {
         this.showToast('Erro ao criar participante', true)
+      }
+    },
+
+    async reactivateAndSelectParticipant(p) {
+      try {
+        const res = await fetch(`/api/participants/${p.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: p.nome,
+            instituicao: p.instituicao,
+            lotacao: p.lotacao,
+            cargo: p.cargo,
+            email: p.email,
+            ativo: true,
+            notas: p.notas
+          })
+        })
+        if (!res.ok) throw new Error()
+        const updated = await res.json()
+        this.allInactiveParticipants = this.allInactiveParticipants.filter(ip => ip.id !== p.id)
+        this.allParticipants.push(updated)
+        this.allParticipants.sort((a, b) => a.nome.localeCompare(b.nome))
+        const pi = this.participantListAll.findIndex(lp => lp.id === p.id)
+        if (pi >= 0) this.participantListAll[pi] = { ...this.participantListAll[pi], ativo: true }
+        this.toggleParticipant(updated.id)
+        this.participantSearch = ''
+        this.showParticipantDropdown = false
+        this.showToast(`${p.nome} reativado(a) e adicionado(a)!`)
+      } catch {
+        this.showToast('Erro ao reativar participante', true)
       }
     },
 

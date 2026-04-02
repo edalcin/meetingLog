@@ -17,6 +17,8 @@ participants.get('/', async (c) => {
   }
   if (ativo === '1') {
     conditions.push('ativo = TRUE')
+  } else if (ativo === '0') {
+    conditions.push('ativo = FALSE')
   }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 

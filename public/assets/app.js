@@ -5,6 +5,7 @@ function app() {
   let _quillEditor = null
   let _quillViewer = null
   let _quillProjectEditor = null
+  let _quillProjectViewer = null
   let _quillParticipantEditor = null
   let _quillParticipantViewer = null
 
@@ -96,8 +97,7 @@ function app() {
     participantListAll: [],
 
     // Participants tab filter & sort
-    filterInstituicao: '',
-    showInstituicaoDropdown: false,
+    participantSearch: '',
     participantSortCol: 'nome',
     participantSortOrder: 'asc',
     participantStatusFilter: '',
@@ -112,10 +112,16 @@ function app() {
     showParticipantInstDropdown: false,
 
     get filteredParticipantList() {
-      const q = this.filterInstituicao.toLowerCase()
+      const q = this.participantSearch.toLowerCase()
       const status = this.participantStatusFilter
       let list = q
-        ? this.participantListAll.filter(p => p.instituicao && p.instituicao.toLowerCase().includes(q))
+        ? this.participantListAll.filter(p => {
+            const notas = (p.notas || '').replace(/<[^>]*>/g, '').toLowerCase()
+            return (p.nome || '').toLowerCase().includes(q)
+              || (p.instituicao || '').toLowerCase().includes(q)
+              || (p.lotacao || '').toLowerCase().includes(q)
+              || notas.includes(q)
+          })
         : this.participantListAll
       if (status) {
         list = list.filter(p => {
@@ -231,12 +237,6 @@ function app() {
         if (!q) return true
         return pr.nome.toLowerCase().includes(q) || (pr.instituicao_nomes && pr.instituicao_nomes.toLowerCase().includes(q))
       })
-    },
-
-    get instituicaoOptions() {
-      const q = this.filterInstituicao.toLowerCase()
-      const unique = [...new Set(this.participantListAll.map(p => p.instituicao).filter(Boolean))].sort()
-      return q ? unique.filter(i => i.toLowerCase().includes(q)) : unique
     },
 
     get projInstituicaoOptions() {
@@ -400,6 +400,16 @@ function app() {
     showParticipantInfo: false,
     participantInfo: null,
     participantInfoLoading: false,
+
+    // Project info modal (read-only "Ficha do Projeto")
+    showProjectInfo: false,
+    projectInfo: null,
+    projectInfoLoading: false,
+
+    // Institution info modal (read-only "Ficha da Instituição")
+    showInstitutionInfo: false,
+    institutionInfo: null,
+    institutionInfoLoading: false,
 
     // Meeting info modal (read-only "Ficha da Reunião")
     showMeetingInfo: false,
@@ -1117,6 +1127,57 @@ function app() {
       this.showParticipantInfo = false
       this.participantInfo = null
       _quillParticipantViewer = null
+    },
+
+    async openProjectInfo(id) {
+      this.projectInfoLoading = true
+      this.showProjectInfo = true
+      try {
+        const res = await fetch(`/api/projects/${id}/detail`)
+        if (!res.ok) throw new Error()
+        this.projectInfo = await res.json()
+        this.projectInfoLoading = false
+        requestAnimationFrame(() => {
+          if (!_quillProjectViewer) {
+            _quillProjectViewer = new Quill('#quill-project-viewer', {
+              theme: 'bubble',
+              readOnly: true,
+              modules: { toolbar: false }
+            })
+          }
+          this.loadNotasIntoQuill(_quillProjectViewer, this.projectInfo.notas)
+        })
+      } catch {
+        this.showToast('Erro ao carregar projeto.', true)
+        this.showProjectInfo = false
+        this.projectInfoLoading = false
+      }
+    },
+
+    closeProjectInfo() {
+      this.showProjectInfo = false
+      this.projectInfo = null
+      _quillProjectViewer = null
+    },
+
+    async openInstitutionInfo(id) {
+      this.institutionInfoLoading = true
+      this.showInstitutionInfo = true
+      try {
+        const res = await fetch(`/api/institutions/${id}`)
+        if (!res.ok) throw new Error()
+        this.institutionInfo = await res.json()
+        this.institutionInfoLoading = false
+      } catch {
+        this.showToast('Erro ao carregar instituição.', true)
+        this.showInstitutionInfo = false
+        this.institutionInfoLoading = false
+      }
+    },
+
+    closeInstitutionInfo() {
+      this.showInstitutionInfo = false
+      this.institutionInfo = null
     },
 
     async loadFiles(meetingId) {

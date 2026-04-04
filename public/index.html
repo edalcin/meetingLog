@@ -460,30 +460,18 @@
           <!-- Filter Bar -->
           <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
             <div class="flex-1 min-w-48">
-              <div class="relative" @click.away="showInstituicaoDropdown = false">
+              <div class="relative">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
                 <input
-                  x-model="filterInstituicao"
+                  x-model="participantSearch"
                   type="text"
-                  placeholder="Filtrar por instituição..."
-                  @focus="showInstituicaoDropdown = true"
-                  @input="showInstituicaoDropdown = true"
-                  @keydown.escape="showInstituicaoDropdown = false; filterInstituicao = ''"
+                  placeholder="Buscar por nome, instituição, lotação ou notas..."
+                  @keydown.escape="participantSearch = ''"
                   class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-colors"
                   autocomplete="off"
                 />
-                <div x-show="showInstituicaoDropdown"
-                     class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-                  <div x-show="instituicaoOptions.length === 0"
-                       class="px-3 py-2 text-sm text-gray-400">Nenhuma instituição encontrada.</div>
-                  <template x-for="inst in instituicaoOptions" :key="inst">
-                    <div @mousedown.prevent="filterInstituicao = inst; showInstituicaoDropdown = false"
-                         class="px-3 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900" x-text="inst">
-                    </div>
-                  </template>
-                </div>
               </div>
             </div>
             <select x-model="participantStatusFilter"
@@ -580,7 +568,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                           </button>
-                          <span x-show="p.has_notas" class="text-indigo-400 p-1" title="Tem notas">
+                          <span x-show="p.notas" class="text-indigo-400 p-1" title="Tem notas">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
@@ -690,13 +678,14 @@
                         <span x-show="projectSortCol === 'reuniao_count'" x-text="projectSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
+                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Info</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <!-- Empty -->
                   <tr x-show="filteredProjectList.length === 0">
-                    <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                       Nenhum projeto encontrado.
                     </td>
                   </tr>
@@ -719,7 +708,27 @@
                               x-text="p.reuniao_count"></span>
                         <span x-show="!p.reuniao_count" class="text-gray-400">—</span>
                       </td>
-                      <td class="px-4 py-3 flex items-center justify-end gap-1">
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-center gap-1">
+                          <button @click="openProjectInfo(p.id)" class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded" title="Ficha do Projeto">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                          </button>
+                          <span x-show="p.has_notas" class="text-indigo-400 p-1" title="Tem notas">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                          </span>
+                          <span x-show="p.link_count > 0" class="text-teal-500 p-1" :title="`${p.link_count} link(s)`">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-end gap-1">
                         <button @click="openEditProject(p)"
                                 class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded" title="Editar">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -734,6 +743,7 @@
                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                           </svg>
                         </button>
+                        </div>
                       </td>
                     </tr>
                   </template>
@@ -818,12 +828,13 @@
                         <span x-show="institutionSortCol === 'projeto_count'" x-text="institutionSortOrder === 'asc' ? '↑' : '↓'" class="text-blue-500"></span>
                       </button>
                     </th>
+                    <th class="px-4 py-3 text-center font-semibold text-gray-700">Info</th>
                     <th class="px-4 py-3 text-right font-semibold text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   <tr x-show="institutionListLoading">
-                    <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                       <div class="flex items-center justify-center gap-2">
                         <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -834,7 +845,7 @@
                     </td>
                   </tr>
                   <tr x-show="!institutionListLoading && filteredInstitutionList.length === 0">
-                    <td colspan="5" class="px-4 py-12 text-center text-gray-400">Nenhuma instituição encontrada.</td>
+                    <td colspan="6" class="px-4 py-12 text-center text-gray-400">Nenhuma instituição encontrada.</td>
                   </tr>
                   <template x-for="inst in filteredInstitutionList" :key="inst.id">
                     <tr class="hover:bg-gray-50 transition-colors">
@@ -852,7 +863,17 @@
                               x-text="inst.projeto_count"></span>
                         <span x-show="!inst.projeto_count" class="text-gray-400">—</span>
                       </td>
-                      <td class="px-4 py-3 flex items-center justify-end gap-1">
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-center gap-1">
+                          <button @click="openInstitutionInfo(inst.id)" class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded" title="Ficha da Instituição">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center justify-end gap-1">
                         <button @click="openEditInstitution(inst)"
                                 class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded" title="Editar">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -867,6 +888,7 @@
                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                           </svg>
                         </button>
+                        </div>
                       </td>
                     </tr>
                   </template>
@@ -2010,6 +2032,169 @@
                      style="height: 70vh">
             </template>
           </div>
+
+        </div>
+      </div>
+
+      <!-- Ficha do Projeto Modal (read-only) -->
+      <div x-show="showProjectInfo" x-cloak
+           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4"
+           @click.self="closeProjectInfo()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+          <!-- Loading state -->
+          <div x-show="projectInfoLoading" class="px-6 py-12 text-center text-gray-400">
+            <div class="flex items-center justify-center gap-2">
+              <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Carregando...
+            </div>
+          </div>
+
+          <!-- Content (shown once loaded) -->
+          <template x-if="!projectInfoLoading && projectInfo">
+            <div>
+              <div class="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+                <div>
+                  <h2 class="text-base font-semibold text-gray-900" x-text="projectInfo.nome"></h2>
+                  <p x-show="projectInfo.instituicao_nomes" class="text-sm text-gray-500 mt-0.5" x-text="projectInfo.instituicao_nomes"></p>
+                </div>
+                <button @click="closeProjectInfo()" class="text-gray-400 hover:text-gray-600 p-1 shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="px-6 py-4 space-y-5">
+
+                <!-- Status -->
+                <div>
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
+                  <div class="mt-0.5">
+                    <span :class="projectInfo.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          x-text="projectInfo.ativo ? 'Ativo' : 'Inativo'"></span>
+                  </div>
+                </div>
+
+                <!-- Links -->
+                <div x-show="projectInfo.links && projectInfo.links.length > 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Links</span>
+                  <ul class="mt-2 space-y-1">
+                    <template x-for="l in projectInfo.links" :key="l.id">
+                      <li class="text-sm">
+                        <a :href="l.url" target="_blank" rel="noopener noreferrer"
+                           class="text-blue-600 hover:underline" x-text="l.nome || l.url"></a>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+
+                <!-- Reuniões -->
+                <div x-show="projectInfo.reunioes && projectInfo.reunioes.length > 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Reuniões</span>
+                  <ul class="mt-2 space-y-1">
+                    <template x-for="r in projectInfo.reunioes" :key="r.id">
+                      <li class="text-sm text-gray-800">
+                        <span class="text-gray-400 mr-1">•</span>
+                        <span x-text="formatDate(r.data_hora)" class="font-medium"></span>
+                        <span x-show="r.tipo" class="text-gray-500 ml-1" x-text="'— ' + r.tipo"></span>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+
+                <!-- Notas -->
+                <div x-show="projectInfo && projectInfo.notas">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Notas</span>
+                  <div id="quill-project-viewer" class="mt-2"></div>
+                </div>
+
+              </div>
+            </div>
+          </template>
+
+        </div>
+      </div>
+
+      <!-- Ficha da Instituição Modal (read-only) -->
+      <div x-show="showInstitutionInfo" x-cloak
+           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4"
+           @click.self="closeInstitutionInfo()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+          <!-- Loading state -->
+          <div x-show="institutionInfoLoading" class="px-6 py-12 text-center text-gray-400">
+            <div class="flex items-center justify-center gap-2">
+              <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Carregando...
+            </div>
+          </div>
+
+          <!-- Content (shown once loaded) -->
+          <template x-if="!institutionInfoLoading && institutionInfo">
+            <div>
+              <div class="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+                <div>
+                  <h2 class="text-base font-semibold text-gray-900" x-text="institutionInfo.sigla"></h2>
+                  <p x-show="institutionInfo.nome" class="text-sm text-gray-500 mt-0.5" x-text="institutionInfo.nome"></p>
+                </div>
+                <button @click="closeInstitutionInfo()" class="text-gray-400 hover:text-gray-600 p-1 shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="px-6 py-4 space-y-5">
+
+                <!-- Participantes -->
+                <div x-show="institutionInfo.participantes && institutionInfo.participantes.length > 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Participantes</span>
+                  <ul class="mt-2 space-y-1">
+                    <template x-for="p in institutionInfo.participantes" :key="p.id">
+                      <li class="text-sm text-gray-800">
+                        <span class="text-gray-400 mr-1">•</span>
+                        <span x-text="p.nome" class="font-medium"></span>
+                        <span x-show="p.lotacao || p.cargo" class="text-gray-500 ml-1"
+                              x-text="'— ' + [p.lotacao, p.cargo].filter(Boolean).join(', ')"></span>
+                        <span x-show="!p.ativo" class="ml-1 inline-flex items-center px-1.5 py-0 rounded text-xs bg-gray-100 text-gray-400">inativo</span>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+                <div x-show="institutionInfo.participantes && institutionInfo.participantes.length === 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Participantes</span>
+                  <p class="text-sm text-gray-400 mt-1">Nenhum participante vinculado.</p>
+                </div>
+
+                <!-- Projetos -->
+                <div x-show="institutionInfo.projetos && institutionInfo.projetos.length > 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Projetos</span>
+                  <ul class="mt-2 space-y-1">
+                    <template x-for="pr in institutionInfo.projetos" :key="pr.id">
+                      <li class="text-sm text-gray-800">
+                        <span class="text-gray-400 mr-1">•</span>
+                        <span x-text="pr.nome"></span>
+                        <span x-show="!pr.ativo" class="ml-1 inline-flex items-center px-1.5 py-0 rounded text-xs bg-gray-100 text-gray-400">inativo</span>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+                <div x-show="institutionInfo.projetos && institutionInfo.projetos.length === 0">
+                  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Projetos</span>
+                  <p class="text-sm text-gray-400 mt-1">Nenhum projeto vinculado.</p>
+                </div>
+
+              </div>
+            </div>
+          </template>
 
         </div>
       </div>

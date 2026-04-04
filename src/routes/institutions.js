@@ -31,6 +31,28 @@ institutions.get('/', async (c) => {
   return c.json({ data: rows, total })
 })
 
+// GET /api/institutions/:id
+institutions.get('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!id) return c.json({ error: 'ID inválido' }, 400)
+
+  const [[row]] = await pool.query('SELECT id, sigla, nome FROM instituicao WHERE id = ?', [id])
+  if (!row) return c.json({ error: 'Instituição não encontrada' }, 404)
+
+  const [participantes] = await pool.query(
+    'SELECT id, nome, lotacao, cargo, ativo FROM participante WHERE instituicao = ? ORDER BY nome ASC',
+    [row.sigla]
+  )
+  const [projetos] = await pool.query(
+    `SELECT p.id, p.nome, p.ativo FROM projeto p
+     JOIN projeto_instituicao pi ON pi.projeto_id = p.id
+     WHERE pi.instituicao_id = ? ORDER BY p.nome ASC`,
+    [id]
+  )
+
+  return c.json({ ...row, participantes, projetos })
+})
+
 // POST /api/institutions
 institutions.post('/', async (c) => {
   const body = await c.req.json()

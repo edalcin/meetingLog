@@ -12,8 +12,8 @@ participants.get('/', async (c) => {
   const conditions = []
   const params = []
   if (q) {
-    conditions.push('(nome LIKE ? OR instituicao LIKE ? OR lotacao LIKE ?)')
-    params.push(`%${q}%`, `%${q}%`, `%${q}%`)
+    conditions.push('(nome LIKE ? OR instituicao LIKE ? OR lotacao LIKE ? OR notas LIKE ?)')
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`)
   }
   if (ativo === '1') {
     conditions.push('ativo = TRUE')
@@ -28,8 +28,7 @@ participants.get('/', async (c) => {
   )
 
   const [rows] = await pool.query(
-    `SELECT id, nome, instituicao, lotacao, cargo, email, ativo,
-            (notas IS NOT NULL AND notas != '') AS has_notas,
+    `SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas,
             (SELECT COUNT(*) FROM reuniao_participante WHERE participante_id = participante.id) AS reuniao_count
      FROM participante ${where} ORDER BY nome ASC LIMIT ?`,
     [...params, limit]

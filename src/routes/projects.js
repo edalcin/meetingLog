@@ -48,7 +48,15 @@ projects.get('/:id/detail', async (c) => {
     'SELECT id, nome, url, ordem FROM projeto_link WHERE projeto_id = ? ORDER BY ordem ASC',
     [id]
   )
-  return c.json({ ...parseRow(row), links: linkRows })
+  const [reunioes] = await pool.query(
+    `SELECT r.id, r.data_hora, r.tipo
+     FROM reuniao r
+     JOIN reuniao_projeto rp ON rp.reuniao_id = r.id
+     WHERE rp.projeto_id = ?
+     ORDER BY r.data_hora DESC`,
+    [id]
+  )
+  return c.json({ ...parseRow(row), links: linkRows, reunioes })
 })
 
 // GET /api/projects?q=&activeOnly=&limit=
@@ -84,6 +92,8 @@ projects.get('/', async (c) => {
     `SELECT p.id, p.nome, p.ativo,
             COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes,
             COALESCE(GROUP_CONCAT(DISTINCT i.id    ORDER BY i.sigla SEPARATOR ','),     '') AS instituicao_ids_str,
+            (p.notas IS NOT NULL AND p.notas != '') AS has_notas,
+            (SELECT COUNT(*) FROM projeto_link WHERE projeto_id = p.id) AS link_count,
             (SELECT COUNT(*) FROM reuniao_projeto WHERE projeto_id = p.id) AS reuniao_count
      FROM projeto p
      LEFT JOIN projeto_instituicao pi ON pi.projeto_id = p.id

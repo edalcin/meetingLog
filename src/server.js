@@ -4,6 +4,7 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { readFileSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { timingSafeEqual } from 'node:crypto'
 import filesRouter from './routes/files.js'
 import meetingsRouter from './routes/meetings.js'
 import participantsRouter from './routes/participants.js'
@@ -11,6 +12,11 @@ import projectsRouter from './routes/projects.js'
 import institutionsRouter from './routes/institutions.js'
 import maintenanceRouter from './routes/maintenance.js'
 import pool from './db.js'
+
+// Rate limiting state for PIN auth (in-memory, resets on restart — acceptable for single-user)
+const authAttempts = new Map() // ip → { count: number, lockedUntil: number }
+const AUTH_MAX = 5
+const AUTH_LOCK_MS = 15 * 60 * 1000 // 15 minutes
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -28,6 +34,23 @@ if (FILES_PATH) {
 
 const app = new Hono()
 
+// Security headers middleware — applied to all responses
+app.use('*', async (c, next) => {
+  await next()
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'DENY')
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  c.header('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline'",
+    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'"
+  ].join('; '))
+})
+
 // Health check
 app.get('/api/health', async (c) => {
   try {
@@ -38,10 +61,31 @@ app.get('/api/health', async (c) => {
   }
 })
 
-// PIN auth check
+// PIN auth check — rate limited + timing-safe
 app.post('/api/auth/check', async (c) => {
+  const ip = c.req.header('x-forwarded-for')?.split(',')[0].trim()
+           ?? c.env?.incoming?.socket?.remoteAddress
+           ?? 'unknown'
+  const now = Date.now()
+  const rec = authAttempts.get(ip) ?? { count: 0, lockedUntil: 0 }
+
+  if (rec.lockedUntil > now) {
+    return c.json({ ok: false }, 429)
+  }
+
   const { pin } = await c.req.json()
-  const ok = pin === process.env.APP_PIN
+  const pinBuf = Buffer.from(String(pin ?? ''))
+  const appBuf = Buffer.from(String(process.env.APP_PIN ?? ''))
+  const ok = pinBuf.length === appBuf.length && timingSafeEqual(pinBuf, appBuf)
+
+  if (!ok) {
+    rec.count++
+    if (rec.count >= AUTH_MAX) rec.lockedUntil = now + AUTH_LOCK_MS
+    authAttempts.set(ip, rec)
+  } else {
+    authAttempts.delete(ip)
+  }
+
   return c.json({ ok })
 })
 

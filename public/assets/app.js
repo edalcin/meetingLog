@@ -826,6 +826,13 @@ function app() {
       this.loadMeetings()
     },
 
+    safeUrl(url) {
+      try {
+        const u = new URL(url)
+        return (u.protocol === 'http:' || u.protocol === 'https:') ? url : '#'
+      } catch { return '#' }
+    },
+
     formatDate(dt) {
       if (!dt) return ''
       const d = new Date(dt)
@@ -1049,6 +1056,9 @@ function app() {
         }
         this.cancelForm()
         this.showToast(this.editingId ? 'Reunião atualizada!' : 'Reunião registrada!')
+        if (body.rejected_urls?.length > 0) {
+          this.showToast(`⚠️ ${body.rejected_urls.length} link(s) com URL inválida foram ignorados: ${body.rejected_urls.join(', ')}`, true)
+        }
         this.currentPage = 1
         await this.loadMeetings()
       } catch {
@@ -1256,7 +1266,7 @@ function app() {
       const pautasHtml = (m.pautas || []).map(p => `<li>${esc(p.texto)}</li>`).join('')
 
       const linksHtml = (m.links || []).map(l =>
-        `<li><a href="${esc(l.url)}">${esc(l.nome || l.url)}</a></li>`
+        `<li><a href="${this.safeUrl(l.url)}">${esc(l.nome || l.url)}</a></li>`
       ).join('')
 
       const section = (label, content) =>
@@ -1600,6 +1610,9 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
           deactCount > 0 ? `Projeto atualizado! ${deactCount} participante(s) marcado(s) como inativo(s).`
                          : 'Projeto atualizado!'
         this.showToast(toast)
+        if (body.rejected_urls?.length > 0) {
+          this.showToast(`⚠️ ${body.rejected_urls.length} link(s) com URL inválida foram ignorados: ${body.rejected_urls.join(', ')}`, true)
+        }
       } catch {
         this.showToast('Erro de conexão.', true)
       } finally {

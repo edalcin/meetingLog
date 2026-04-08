@@ -10,9 +10,13 @@ COPY public ./public
 
 # Stage 2: Runtime
 FROM node:22-alpine AS runner
-RUN apk add --no-cache mysql-client poppler-utils
+RUN apk add --no-cache mysql-client poppler-utils su-exec
 
 WORKDIR /app
+
+# Create non-privileged user for runtime
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/migrations ./migrations

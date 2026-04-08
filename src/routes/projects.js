@@ -3,6 +3,13 @@ import pool from '../db.js'
 
 const projects = new Hono()
 
+function isAllowedUrl(url) {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch { return false }
+}
+
 function parseRow(r) {
   const { instituicao_ids_str, ...rest } = r
   return {
@@ -119,9 +126,16 @@ projects.post('/', async (c) => {
   const instituicao_ids = Array.isArray(body.instituicao_ids)
     ? body.instituicao_ids.map(Number).filter(Boolean)
     : []
-  const validLinks = Array.isArray(body.links)
-    ? body.links.filter(l => l?.url?.trim())
-    : []
+  const validLinks = []
+  const rejectedUrls = []
+  for (const l of (Array.isArray(body.links) ? body.links : [])) {
+    if (!l?.url?.trim()) continue
+    if (isAllowedUrl(l.url.trim())) {
+      validLinks.push(l)
+    } else {
+      rejectedUrls.push(l.url.trim())
+    }
+  }
 
   const conn = await pool.getConnection()
   try {
@@ -146,7 +160,7 @@ projects.post('/', async (c) => {
     }
     await conn.commit()
     const row = await fetchProjectById(conn, projetoId)
-    return c.json(row, 201)
+    return c.json({ ...row, rejected_urls: rejectedUrls }, 201)
   } catch (err) {
     await conn.rollback()
     throw err
@@ -168,9 +182,16 @@ projects.put('/:id', async (c) => {
   const instituicao_ids = Array.isArray(body.instituicao_ids)
     ? body.instituicao_ids.map(Number).filter(Boolean)
     : []
-  const validLinks = Array.isArray(body.links)
-    ? body.links.filter(l => l?.url?.trim())
-    : []
+  const validLinks = []
+  const rejectedUrls = []
+  for (const l of (Array.isArray(body.links) ? body.links : [])) {
+    if (!l?.url?.trim()) continue
+    if (isAllowedUrl(l.url.trim())) {
+      validLinks.push(l)
+    } else {
+      rejectedUrls.push(l.url.trim())
+    }
+  }
 
   const conn = await pool.getConnection()
   try {
@@ -238,7 +259,7 @@ projects.put('/:id', async (c) => {
 
     await conn.commit()
     const row = await fetchProjectById(conn, id)
-    return c.json({ ...row, deactivated_participants })
+    return c.json({ ...row, deactivated_participants, rejected_urls: rejectedUrls })
   } catch (err) {
     await conn.rollback()
     throw err

@@ -5,6 +5,13 @@ const meetings = new Hono()
 
 const ALLOWED_SORT = ['data_hora', 'tipo', 'participantes_nomes', 'projeto_nomes']
 
+function isAllowedUrl(url) {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch { return false }
+}
+
 // GET /api/meetings
 meetings.get('/', async (c) => {
   const partIdsRaw = c.req.query('part_ids') ?? ''
@@ -180,9 +187,16 @@ meetings.post('/', async (c) => {
       )
     }
 
-    const validLinks = Array.isArray(links)
-      ? links.filter(l => l?.nome?.trim() && l?.url?.trim())
-      : []
+    const validLinks = []
+    const rejectedUrls = []
+    for (const l of (Array.isArray(links) ? links : [])) {
+      if (!l?.nome?.trim() || !l?.url?.trim()) continue
+      if (isAllowedUrl(l.url.trim())) {
+        validLinks.push(l)
+      } else {
+        rejectedUrls.push(l.url.trim())
+      }
+    }
     for (let i = 0; i < validLinks.length; i++) {
       await conn.query(
         'INSERT INTO link (reuniao_id, nome, url, ordem) VALUES (?, ?, ?, ?)',
@@ -236,7 +250,8 @@ meetings.post('/', async (c) => {
       projeto_ids: projetos.map(pr => pr.id),
       projeto_nomes: projetos.map(pr => pr.nome).join(', '),
       pautas: paRows,
-      links: lkRows
+      links: lkRows,
+      rejected_urls: rejectedUrls
     }, 201)
   } catch (err) {
     await conn.rollback()
@@ -299,9 +314,16 @@ meetings.put('/:id', async (c) => {
 
     await conn.query('DELETE FROM link WHERE reuniao_id = ?', [id])
 
-    const validLinks = Array.isArray(links)
-      ? links.filter(l => l?.nome?.trim() && l?.url?.trim())
-      : []
+    const validLinks = []
+    const rejectedUrls = []
+    for (const l of (Array.isArray(links) ? links : [])) {
+      if (!l?.nome?.trim() || !l?.url?.trim()) continue
+      if (isAllowedUrl(l.url.trim())) {
+        validLinks.push(l)
+      } else {
+        rejectedUrls.push(l.url.trim())
+      }
+    }
     for (let i = 0; i < validLinks.length; i++) {
       await conn.query(
         'INSERT INTO link (reuniao_id, nome, url, ordem) VALUES (?, ?, ?, ?)',
@@ -355,7 +377,8 @@ meetings.put('/:id', async (c) => {
       projeto_ids: projetos.map(pr => pr.id),
       projeto_nomes: projetos.map(pr => pr.nome).join(', '),
       pautas: paRows,
-      links: lkRows
+      links: lkRows,
+      rejected_urls: rejectedUrls
     })
   } catch (err) {
     await conn.rollback()

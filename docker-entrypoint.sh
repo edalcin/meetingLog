@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+# Fix ownership of data directory so appuser can write to volumes mounted as root
+if [ -n "$FILES_PATH" ]; then
+  chown -R appuser:appgroup "$FILES_PATH" 2>/dev/null || true
+fi
+
 echo "[entrypoint] Waiting for MariaDB to be ready..."
 RETRIES=30
 until mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -e "SELECT 1" > /dev/null 2>&1; do
@@ -28,5 +33,5 @@ for f in migrations/*.sql; do
   fi
 done
 
-echo "[entrypoint] Migrations complete. Starting application..."
-exec node src/server.js
+echo "[entrypoint] Migrations complete. Starting application as appuser..."
+exec su-exec appuser node src/server.js

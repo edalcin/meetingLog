@@ -1,6 +1,6 @@
 ﻿# meetingLog Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-01
+Auto-generated from all feature plans. Last updated: 2026-04-08
 
 ## Project Overview
 
@@ -22,6 +22,8 @@ Meeting log web application. Single Node.js (Hono) container serving REST API + 
 - MariaDB — tabela `projeto` (ALTER: +notas), nova tabela `projeto_link` (010-project-notes-links)
 - Node.js 22, ES modules + Hono (web framework), mysql2/promise, Alpine.js CDN, Tailwind CSS CDN, Quill CDN (011-enhance-participantes)
 - MariaDB — database `reunioes`, tabela `participante` (ALTER) (011-enhance-participantes)
+- Node.js 22, ES modules (`import`/`export`) + Hono 4.12.8, mysql2/promise, Alpine.js CDN, Tailwind CDN, Quill CDN (012-fix-security-high)
+- MariaDB — sem alterações de schema (012-fix-security-high)
 
 - Node.js 22 + Hono (web framework) — main feature
 - mysql2 (MariaDB driver)
@@ -61,9 +63,9 @@ docker build .       # Build Docker image
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `APP_PIN`, `APP_PORT` (default 3000)
 
 ## Recent Changes
+- 012-fix-security-high: Added Node.js 22, ES modules (`import`/`export`) + Hono 4.12.8, mysql2/promise, Alpine.js CDN, Tailwind CDN, Quill CDN
 - 011-enhance-participantes: Added Node.js 22, ES modules + Hono (web framework), mysql2/promise, Alpine.js CDN, Tailwind CSS CDN, Quill CDN
 - 010-project-notes-links: Added Node.js 22, ES modules + Hono (web framework), mysql2/promise (MariaDB), Alpine.js CDN, Tailwind CSS CDN, Quill CDN
-- 009-maintenance-project-replace: Added Node.js 22, ES modules + Hono (web framework), mysql2/promise (MariaDB), Alpine.js CDN, Tailwind CSS CDN
 
 
 <!-- MANUAL ADDITIONS START -->

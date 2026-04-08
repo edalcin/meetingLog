@@ -43,8 +43,9 @@ app.use('*', async (c, next) => {
   c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   c.header('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline'",
+    "script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
+    "font-src 'self' https://cdn.jsdelivr.net",
     "img-src 'self' data: blob:",
     "connect-src 'self'",
     "frame-ancestors 'none'"

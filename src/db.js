@@ -4,7 +4,7 @@ import { dirname } from 'path'
 
 export const DB_PATH = process.env.DB_PATH || '/data/db/meetinglog.sqlite'
 
-mkdirSync(dirname(DB_PATH), { recursive: true })
+try { mkdirSync(dirname(DB_PATH), { recursive: true }) } catch { /* entrypoint creates the dir as root */ }
 
 const db = new Database(DB_PATH)
 db.pragma('journal_mode = WAL')

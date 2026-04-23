@@ -49,7 +49,7 @@ app.use('*', async (c, next) => {
     "img-src 'self' data: blob:",
     "connect-src 'self'",
     "frame-src 'self'",
-    "frame-ancestors 'none'"
+    isFileContent ? "frame-ancestors 'self'" : "frame-ancestors 'none'"
   ].join('; '))
 })
 

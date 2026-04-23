@@ -98,7 +98,7 @@ meetings.get('/:id', (c) => {
 
   const prRows = db.prepare(
     `SELECT pr.id, pr.nome, pr.ativo,
-            COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = pr.id ORDER BY i2.sigla)), '') AS instituicao_nomes
+            COALESCE((SELECT GROUP_CONCAT(sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = pr.id ORDER BY i2.sigla)), '') AS instituicao_nomes
      FROM reuniao_projeto rpj
      JOIN projeto pr ON pr.id = rpj.projeto_id
      WHERE rpj.reuniao_id = ?
@@ -181,7 +181,7 @@ meetings.post('/', async (c) => {
   ).all(reuniaoId)
   const prRows = db.prepare(
     `SELECT pr.id, pr.nome, pr.ativo,
-            COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = pr.id ORDER BY i2.sigla)), '') AS instituicao_nomes
+            COALESCE((SELECT GROUP_CONCAT(sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = pr.id ORDER BY i2.sigla)), '') AS instituicao_nomes
      FROM reuniao_projeto rpj
      JOIN projeto pr ON pr.id = rpj.projeto_id
      WHERE rpj.reuniao_id = ? ORDER BY pr.nome`
@@ -265,7 +265,7 @@ meetings.put('/:id', async (c) => {
   ).all(id)
   const prRows = db.prepare(
     `SELECT pr.id, pr.nome, pr.ativo,
-            COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = pr.id ORDER BY i2.sigla)), '') AS instituicao_nomes
+            COALESCE((SELECT GROUP_CONCAT(sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = pr.id ORDER BY i2.sigla)), '') AS instituicao_nomes
      FROM reuniao_projeto rpj
      JOIN projeto pr ON pr.id = rpj.projeto_id
      WHERE rpj.reuniao_id = ? ORDER BY pr.nome`

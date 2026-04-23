@@ -103,7 +103,7 @@ participants.get('/:id', (c) => {
 
   const reunioes = db.prepare(
     `SELECT r.id, r.data_hora,
-            COALESCE((SELECT GROUP_CONCAT(p2.nome, ', ') FROM (SELECT DISTINCT p2.nome FROM projeto p2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = p2.id WHERE rpj2.reuniao_id = r.id ORDER BY p2.nome)), '') AS projeto_nomes
+            COALESCE((SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT DISTINCT p2.nome FROM projeto p2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = p2.id WHERE rpj2.reuniao_id = r.id ORDER BY p2.nome)), '') AS projeto_nomes
      FROM reuniao_participante rp
      JOIN reuniao r ON r.id = rp.reuniao_id
      WHERE rp.participante_id = ?

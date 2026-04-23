@@ -29,7 +29,7 @@ maintenance.post('/replace-project', async (c) => {
     const rows = db.prepare(
       `SELECT r.id,
               strftime('%d/%m/%Y, %H:%M', r.data_hora) AS data_fmt,
-              COALESCE((SELECT GROUP_CONCAT(p2.nome, ', ') FROM (SELECT DISTINCT p2.nome FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)), '—') AS participantes_nomes
+              COALESCE((SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT DISTINCT p2.nome FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)), '—') AS participantes_nomes
        FROM reuniao r
        JOIN reuniao_projeto rp ON rp.reuniao_id = r.id
        WHERE rp.projeto_id = ?

@@ -31,11 +31,8 @@ src/
     maintenance.js  # Substituição de projeto + backup/restore SQLite
 migrations/
   001_sqlite_init.sql   # Schema completo SQLite (idempotente)
-  mariadb/              # Migrations históricas MariaDB (arquivo)
-scripts/
-  migrate-mariadb-to-sqlite.js  # Migração one-time MariaDB → SQLite (node:sqlite)
 public/             # Frontend estático (HTML, Alpine.js, PWA assets)
-docs/               # Documentação (guia UNRAID, dados fonte)
+docs/               # Documentação (guia UNRAID)
 .github/workflows/  # CI/CD (publica no GHCR a cada push no main)
 ```
 
@@ -91,6 +88,10 @@ await db.backup('/tmp/backup.sqlite')  // consistente mesmo com WAL ativo
 
 Após swap atômico do arquivo: `process.exit(0)` — o Docker reinicia automaticamente (restart: unless-stopped).
 
+### PDF em iframe
+
+O endpoint `/api/files/:id/content` serve PDFs com `X-Frame-Options: SAMEORIGIN` (exceção à regra global `DENY`) para permitir o visualizador `<iframe>` na mesma origem. Não usar `<embed>` — depreciado em Chrome moderno.
+
 ## Variáveis de Ambiente
 
 | Variável | Padrão | Descrição |
@@ -99,16 +100,10 @@ Após swap atômico do arquivo: `process.exit(0)` — o Docker reinicia automati
 | `APP_PIN` | — | PIN de acesso (obrigatório) |
 | `APP_PORT` | `3000` | Porta HTTP |
 | `FILES_PATH` | — | Diretório de uploads |
-| `MARIADB_HOST` | — | Ativa migração one-time na ausência do SQLite |
-| `MARIADB_PORT` | `3306` | Porta MariaDB (só para migração) |
-| `MARIADB_DB` | — | Banco MariaDB (só para migração) |
-| `MARIADB_USER` | — | Usuário MariaDB (só para migração) |
-| `MARIADB_PASS` | — | Senha MariaDB (só para migração) |
 
 ## Entrypoint (docker-entrypoint.sh)
 
 1. Define `DB_PATH` padrão se não definido
 2. Cria diretório do DB como root e transfere para `appuser`
-3. Se `MARIADB_HOST` definido **e** SQLite não existe → executa migração one-time
-4. Executa `src/migrate.js` (aplica migrations SQL pendentes)
-5. `exec su-exec appuser node src/server.js`
+3. Executa `src/migrate.js` (aplica migrations SQL pendentes)
+4. `exec su-exec appuser node src/server.js`

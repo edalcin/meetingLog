@@ -36,7 +36,9 @@ const app = new Hono()
 app.use('*', async (c, next) => {
   await next()
   c.header('X-Content-Type-Options', 'nosniff')
-  c.header('X-Frame-Options', 'DENY')
+  // SAMEORIGIN for file content so same-origin <iframe> PDF viewer works
+  const isFileContent = /^\/api\/files\/\d+\/content$/.test(c.req.path)
+  c.header('X-Frame-Options', isFileContent ? 'SAMEORIGIN' : 'DENY')
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
   c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   c.header('Content-Security-Policy', [
@@ -46,6 +48,7 @@ app.use('*', async (c, next) => {
     "font-src 'self' https://cdn.jsdelivr.net",
     "img-src 'self' data: blob:",
     "connect-src 'self'",
+    "frame-src 'self'",
     "frame-ancestors 'none'"
   ].join('; '))
 })

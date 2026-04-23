@@ -38,28 +38,6 @@ Acesse: `http://localhost:3000`
 | `FILES_PATH` | Não | — | Diretório para upload de arquivos dentro do container |
 | `APP_PORT` | Não | `3000` | Porta HTTP do container |
 
-## Migração a partir do MariaDB
-
-Na primeira inicialização, se `MARIADB_HOST` estiver definida e o arquivo SQLite ainda não existir, o container migra os dados automaticamente e depois inicia normalmente:
-
-```bash
-docker run -d \
-  --name meetinglog \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  -e APP_PIN=seu-pin \
-  -e DB_PATH=/data/db/meetinglog.sqlite \
-  -e MARIADB_HOST=192.168.1.10 \
-  -e MARIADB_PORT=3306 \
-  -e MARIADB_DB=reunioes \
-  -e MARIADB_USER=reunioes_app \
-  -e MARIADB_PASS=sua-senha \
-  -v /caminho/local/db:/data/db \
-  ghcr.io/edalcin/meetinglog:latest
-```
-
-Após a migração concluir (veja os logs: `[migrate] Concluído!`), as variáveis `MARIADB_*` podem ser removidas do container.
-
 ## Backup e Restauração
 
 Na seção **Manutenção** da interface:

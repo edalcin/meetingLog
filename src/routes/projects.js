@@ -22,8 +22,8 @@ function parseRow(r) {
 function fetchProjectById(id) {
   const row = db.prepare(`
     SELECT p.id, p.nome, p.ativo, p.notas,
-      COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_nomes,
-      COALESCE((SELECT GROUP_CONCAT(i2.id, ',') FROM (SELECT i2.id, i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_ids_str
+      COALESCE((SELECT GROUP_CONCAT(sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_nomes,
+      COALESCE((SELECT GROUP_CONCAT(id, ',') FROM (SELECT i2.id, i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_ids_str
     FROM projeto p
     WHERE p.id = ?
   `).get(id)
@@ -77,8 +77,8 @@ projects.get('/', (c) => {
 
   const rows = db.prepare(
     `SELECT p.id, p.nome, p.ativo,
-            COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_nomes,
-            COALESCE((SELECT GROUP_CONCAT(i2.id, ',') FROM (SELECT i2.id, i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_ids_str,
+            COALESCE((SELECT GROUP_CONCAT(sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_nomes,
+            COALESCE((SELECT GROUP_CONCAT(id, ',') FROM (SELECT i2.id, i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_ids_str,
             (p.notas IS NOT NULL AND p.notas != '') AS has_notas,
             (SELECT COUNT(*) FROM projeto_link WHERE projeto_id = p.id) AS link_count,
             (SELECT COUNT(*) FROM reuniao_projeto WHERE projeto_id = p.id) AS reuniao_count

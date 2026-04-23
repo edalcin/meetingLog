@@ -52,10 +52,10 @@ meetings.get('/', (c) => {
     `SELECT r.id, r.data_hora, r.tipo, r.criado_em, r.atualizado_em,
        (r.notas IS NOT NULL) AS has_notas,
        (SELECT COUNT(*) FROM arquivo WHERE reuniao_id = r.id) AS arquivo_count,
-       (SELECT GROUP_CONCAT(p2.nome, ', ') FROM (SELECT p2.nome FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)) AS participantes_nomes,
-       (SELECT GROUP_CONCAT(p2.id, ',') FROM (SELECT p2.id FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)) AS participante_ids_str,
-       (SELECT GROUP_CONCAT(pr2.nome, ', ') FROM (SELECT pr2.nome FROM projeto pr2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = pr2.id WHERE rpj2.reuniao_id = r.id ORDER BY pr2.nome)) AS projeto_nomes,
-       (SELECT GROUP_CONCAT(pr2.id, ',') FROM (SELECT pr2.id FROM projeto pr2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = pr2.id WHERE rpj2.reuniao_id = r.id ORDER BY pr2.nome)) AS projeto_ids_str
+       (SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT p2.nome FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)) AS participantes_nomes,
+       (SELECT GROUP_CONCAT(id, ',') FROM (SELECT p2.id FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)) AS participante_ids_str,
+       (SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT pr2.nome FROM projeto pr2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = pr2.id WHERE rpj2.reuniao_id = r.id ORDER BY pr2.nome)) AS projeto_nomes,
+       (SELECT GROUP_CONCAT(id, ',') FROM (SELECT pr2.id FROM projeto pr2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = pr2.id WHERE rpj2.reuniao_id = r.id ORDER BY pr2.nome)) AS projeto_ids_str
      FROM reuniao r
      ${where}
      ORDER BY ${sortExpr} ${order}

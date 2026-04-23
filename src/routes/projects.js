@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import pool from '../db.js'
+import db from '../db.js'
 
 const projects = new Hono()
 
@@ -19,55 +19,38 @@ function parseRow(r) {
   }
 }
 
-// SELECT com JOINs para um único projeto (usado após INSERT/UPDATE)
-async function fetchProjectById(conn, id) {
-  const [[row]] = await conn.query(
-    `SELECT p.id, p.nome, p.ativo, p.notas,
-            COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes,
-            COALESCE(GROUP_CONCAT(DISTINCT i.id    ORDER BY i.sigla SEPARATOR ','),     '') AS instituicao_ids_str
-     FROM projeto p
-     LEFT JOIN projeto_instituicao pi ON pi.projeto_id = p.id
-     LEFT JOIN instituicao i ON i.id = pi.instituicao_id
-     WHERE p.id = ?
-     GROUP BY p.id`,
-    [id]
-  )
+function fetchProjectById(id) {
+  const row = db.prepare(`
+    SELECT p.id, p.nome, p.ativo, p.notas,
+      COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_nomes,
+      COALESCE((SELECT GROUP_CONCAT(i2.id, ',') FROM (SELECT i2.id, i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_ids_str
+    FROM projeto p
+    WHERE p.id = ?
+  `).get(id)
   return row ? parseRow(row) : null
 }
 
 // GET /api/projects/:id/detail
-projects.get('/:id/detail', async (c) => {
+projects.get('/:id/detail', (c) => {
   const id = Number(c.req.param('id'))
   if (!id) return c.json({ error: 'ID inválido' }, 400)
-  const [[row]] = await pool.query(
-    `SELECT p.id, p.nome, p.ativo, p.notas,
-            COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes,
-            COALESCE(GROUP_CONCAT(DISTINCT i.id    ORDER BY i.sigla SEPARATOR ','),     '') AS instituicao_ids_str
-     FROM projeto p
-     LEFT JOIN projeto_instituicao pi ON pi.projeto_id = p.id
-     LEFT JOIN instituicao i ON i.id = pi.instituicao_id
-     WHERE p.id = ?
-     GROUP BY p.id`,
-    [id]
-  )
+  const row = fetchProjectById(id)
   if (!row) return c.json({ error: 'Projeto não encontrado' }, 404)
-  const [linkRows] = await pool.query(
-    'SELECT id, nome, url, ordem FROM projeto_link WHERE projeto_id = ? ORDER BY ordem ASC',
-    [id]
-  )
-  const [reunioes] = await pool.query(
+  const linkRows = db.prepare(
+    'SELECT id, nome, url, ordem FROM projeto_link WHERE projeto_id = ? ORDER BY ordem ASC'
+  ).all(id)
+  const reunioes = db.prepare(
     `SELECT r.id, r.data_hora, r.tipo
      FROM reuniao r
      JOIN reuniao_projeto rp ON rp.reuniao_id = r.id
      WHERE rp.projeto_id = ?
-     ORDER BY r.data_hora DESC`,
-    [id]
-  )
-  return c.json({ ...parseRow(row), links: linkRows, reunioes })
+     ORDER BY r.data_hora DESC`
+  ).all(id)
+  return c.json({ ...row, links: linkRows, reunioes })
 })
 
 // GET /api/projects?q=&activeOnly=&limit=
-projects.get('/', async (c) => {
+projects.get('/', (c) => {
   const q          = c.req.query('q') ?? ''
   const activeOnly = c.req.query('activeOnly') === 'true'
   const limit      = Math.min(500, Math.max(1, Number(c.req.query('limit') ?? 200)))
@@ -90,27 +73,20 @@ projects.get('/', async (c) => {
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-  const [[{ total }]] = await pool.query(
-    `SELECT COUNT(*) AS total FROM projeto p ${where}`,
-    params
-  )
+  const { total } = db.prepare(`SELECT COUNT(*) AS total FROM projeto p ${where}`).get(...params)
 
-  const [rows] = await pool.query(
+  const rows = db.prepare(
     `SELECT p.id, p.nome, p.ativo,
-            COALESCE(GROUP_CONCAT(DISTINCT i.sigla ORDER BY i.sigla SEPARATOR ', '), '') AS instituicao_nomes,
-            COALESCE(GROUP_CONCAT(DISTINCT i.id    ORDER BY i.sigla SEPARATOR ','),     '') AS instituicao_ids_str,
+            COALESCE((SELECT GROUP_CONCAT(i2.sigla, ', ') FROM (SELECT DISTINCT i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_nomes,
+            COALESCE((SELECT GROUP_CONCAT(i2.id, ',') FROM (SELECT i2.id, i2.sigla FROM instituicao i2 JOIN projeto_instituicao pi2 ON pi2.instituicao_id = i2.id WHERE pi2.projeto_id = p.id ORDER BY i2.sigla)), '') AS instituicao_ids_str,
             (p.notas IS NOT NULL AND p.notas != '') AS has_notas,
             (SELECT COUNT(*) FROM projeto_link WHERE projeto_id = p.id) AS link_count,
             (SELECT COUNT(*) FROM reuniao_projeto WHERE projeto_id = p.id) AS reuniao_count
      FROM projeto p
-     LEFT JOIN projeto_instituicao pi ON pi.projeto_id = p.id
-     LEFT JOIN instituicao i ON i.id = pi.instituicao_id
      ${where}
-     GROUP BY p.id
      ORDER BY p.nome ASC
-     LIMIT ?`,
-    [...params, limit]
-  )
+     LIMIT ?`
+  ).all(...params, limit)
 
   return c.json({ data: rows.map(parseRow), total })
 })
@@ -137,36 +113,21 @@ projects.post('/', async (c) => {
     }
   }
 
-  const conn = await pool.getConnection()
-  try {
-    await conn.beginTransaction()
-    const [result] = await conn.query(
-      'INSERT INTO projeto (nome, ativo, notas) VALUES (?, ?, ?)',
-      [nome, ativo, notas]
-    )
-    const projetoId = result.insertId
+  const projetoId = db.transaction(() => {
+    const result = db.prepare('INSERT INTO projeto (nome, ativo, notas) VALUES (?, ?, ?)').run(nome, ativo, notas)
+    const id = Number(result.lastInsertRowid)
     for (const instId of instituicao_ids) {
-      await conn.query(
-        'INSERT IGNORE INTO projeto_instituicao (projeto_id, instituicao_id) VALUES (?, ?)',
-        [projetoId, instId]
-      )
+      db.prepare('INSERT OR IGNORE INTO projeto_instituicao (projeto_id, instituicao_id) VALUES (?, ?)').run(id, instId)
     }
     for (let i = 0; i < validLinks.length; i++) {
       const l = validLinks[i]
-      await conn.query(
-        'INSERT IGNORE INTO projeto_link (projeto_id, nome, url, ordem) VALUES (?, ?, ?, ?)',
-        [projetoId, l.nome?.trim() || null, l.url.trim(), i]
-      )
+      db.prepare('INSERT OR IGNORE INTO projeto_link (projeto_id, nome, url, ordem) VALUES (?, ?, ?, ?)').run(id, l.nome?.trim() || null, l.url.trim(), i)
     }
-    await conn.commit()
-    const row = await fetchProjectById(conn, projetoId)
-    return c.json({ ...row, rejected_urls: rejectedUrls }, 201)
-  } catch (err) {
-    await conn.rollback()
-    throw err
-  } finally {
-    conn.release()
-  }
+    return id
+  })()
+
+  const row = fetchProjectById(projetoId)
+  return c.json({ ...row, rejected_urls: rejectedUrls }, 201)
 })
 
 // PUT /api/projects/:id
@@ -193,47 +154,31 @@ projects.put('/:id', async (c) => {
     }
   }
 
-  const conn = await pool.getConnection()
-  try {
-    await conn.beginTransaction()
+  let deactivated_participants = []
 
-    // Capture previous ativo to detect deactivation
-    const [[prev]] = await conn.query('SELECT ativo FROM projeto WHERE id=?', [id])
-    if (!prev) { await conn.rollback(); return c.json({ error: 'Projeto não encontrado' }, 404) }
+  db.transaction(() => {
+    const prev = db.prepare('SELECT ativo FROM projeto WHERE id=?').get(id)
+    if (!prev) throw Object.assign(new Error('Projeto não encontrado'), { status: 404 })
     const wasActive = Boolean(prev.ativo)
 
-    const [result] = await conn.query(
-      'UPDATE projeto SET nome=?, ativo=?, notas=? WHERE id=?',
-      [nome, ativo, notas, id]
-    )
-    if (result.affectedRows === 0) {
-      await conn.rollback()
-      return c.json({ error: 'Projeto não encontrado' }, 404)
-    }
-    await conn.query('DELETE FROM projeto_instituicao WHERE projeto_id=?', [id])
+    const result = db.prepare('UPDATE projeto SET nome=?, ativo=?, notas=? WHERE id=?').run(nome, ativo, notas, id)
+    if (result.changes === 0) throw Object.assign(new Error('Projeto não encontrado'), { status: 404 })
+
+    db.prepare('DELETE FROM projeto_instituicao WHERE projeto_id=?').run(id)
     for (const instId of instituicao_ids) {
-      await conn.query(
-        'INSERT IGNORE INTO projeto_instituicao (projeto_id, instituicao_id) VALUES (?, ?)',
-        [id, instId]
-      )
+      db.prepare('INSERT OR IGNORE INTO projeto_instituicao (projeto_id, instituicao_id) VALUES (?, ?)').run(id, instId)
     }
-    await conn.query('DELETE FROM projeto_link WHERE projeto_id=?', [id])
+    db.prepare('DELETE FROM projeto_link WHERE projeto_id=?').run(id)
     for (let i = 0; i < validLinks.length; i++) {
       const l = validLinks[i]
-      await conn.query(
-        'INSERT IGNORE INTO projeto_link (projeto_id, nome, url, ordem) VALUES (?, ?, ?, ?)',
-        [id, l.nome?.trim() || null, l.url.trim(), i]
-      )
+      db.prepare('INSERT OR IGNORE INTO projeto_link (projeto_id, nome, url, ordem) VALUES (?, ?, ?, ?)').run(id, l.nome?.trim() || null, l.url.trim(), i)
     }
 
-    // Cascade deactivation: if project just became inactive, deactivate participants
-    // whose meetings are now exclusively linked to inactive projects
-    let deactivated_participants = []
     if (wasActive && ativo === 0) {
-      const [candidates] = await conn.query(
+      const candidates = db.prepare(
         `SELECT p.id, p.nome FROM participante p
-         WHERE p.ativo = TRUE
-           AND p.ativo_manual = FALSE
+         WHERE p.ativo = 1
+           AND p.ativo_manual = 0
            AND EXISTS (
              SELECT 1 FROM reuniao_participante rp
              JOIN reuniao_projeto rpj ON rpj.reuniao_id = rp.reuniao_id
@@ -243,54 +188,43 @@ projects.put('/:id', async (c) => {
              SELECT 1 FROM reuniao_participante rp2
              JOIN reuniao_projeto rpj2 ON rpj2.reuniao_id = rp2.reuniao_id
              JOIN projeto pr ON pr.id = rpj2.projeto_id
-             WHERE rp2.participante_id = p.id AND pr.ativo = TRUE
-           )`,
-        [id]
-      )
+             WHERE rp2.participante_id = p.id AND pr.ativo = 1
+           )`
+      ).all(id)
       if (candidates.length > 0) {
         const ids = candidates.map(p => p.id)
-        await conn.query(
-          `UPDATE participante SET ativo = FALSE WHERE id IN (${ids.map(() => '?').join(',')})`,
-          ids
-        )
+        db.prepare(`UPDATE participante SET ativo = 0 WHERE id IN (${ids.map(() => '?').join(',')})`).run(...ids)
         deactivated_participants = candidates
       }
     }
+  })()
 
-    await conn.commit()
-    const row = await fetchProjectById(conn, id)
-    return c.json({ ...row, deactivated_participants, rejected_urls: rejectedUrls })
-  } catch (err) {
-    await conn.rollback()
-    throw err
-  } finally {
-    conn.release()
-  }
+  const row = fetchProjectById(id)
+  return c.json({ ...row, deactivated_participants, rejected_urls: rejectedUrls })
 })
 
 // DELETE /api/projects/:id
-projects.delete('/:id', async (c) => {
+projects.delete('/:id', (c) => {
   const id = Number(c.req.param('id'))
   if (!id) return c.json({ error: 'ID inválido' }, 400)
 
-  const [[{ total }]] = await pool.query(
-    'SELECT COUNT(*) AS total FROM reuniao_projeto WHERE projeto_id = ?', [id]
-  )
+  const { total } = db.prepare(
+    'SELECT COUNT(*) AS total FROM reuniao_projeto WHERE projeto_id = ?'
+  ).get(id)
 
   if (total > 0) {
-    const [rows] = await pool.query(
-      `SELECT DATE_FORMAT(r.data_hora, '%d/%m/%Y') AS data FROM reuniao r
+    const rows = db.prepare(
+      `SELECT strftime('%d/%m/%Y', r.data_hora) AS data FROM reuniao r
        JOIN reuniao_projeto rp ON rp.reuniao_id = r.id
-       WHERE rp.projeto_id = ? ORDER BY r.data_hora LIMIT 5`,
-      [id]
-    )
+       WHERE rp.projeto_id = ? ORDER BY r.data_hora LIMIT 5`
+    ).all(id)
     const dates = rows.map(r => r.data).join(', ')
     const extra = total > 5 ? ` e mais ${total - 5}` : ''
     return c.json({ error: `Não é possível excluir: projeto vinculado a ${total} reunião(ões) (${dates}${extra}).` }, 409)
   }
 
-  const [result] = await pool.query('DELETE FROM projeto WHERE id = ?', [id])
-  if (result.affectedRows === 0) return c.json({ error: 'Projeto não encontrado' }, 404)
+  const result = db.prepare('DELETE FROM projeto WHERE id = ?').run(id)
+  if (result.changes === 0) return c.json({ error: 'Projeto não encontrado' }, 404)
   return c.json({ ok: true })
 })
 

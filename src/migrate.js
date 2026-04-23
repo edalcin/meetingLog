@@ -1,37 +1,46 @@
-import { join, dirname } from 'path'
+import Database from 'better-sqlite3'
+import { mkdirSync, readdirSync, readFileSync } from 'fs'
+import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { readdirSync, readFileSync } from 'fs'
-import mysql from 'mysql2/promise'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const conn = await mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  multipleStatements: true
-})
+const DB_PATH = process.env.DB_PATH || '/data/db/meetinglog.sqlite'
+mkdirSync(dirname(DB_PATH), { recursive: true })
+
+const db = new Database(DB_PATH)
+db.pragma('journal_mode = WAL')
+db.pragma('foreign_keys = ON')
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS schema_migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL UNIQUE,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`)
 
 const migrationsDir = join(__dirname, '../migrations')
-const files = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
+const files = readdirSync(migrationsDir)
+  .filter(f => f.endsWith('.sql'))
+  .sort()
 
 for (const file of files) {
-  const [[row]] = await conn.query(
-    'SELECT COUNT(*) AS c FROM schema_migrations WHERE filename = ?', [file]
-  ).catch(() => [[{ c: 0 }]])
-
+  const row = db.prepare('SELECT COUNT(*) AS c FROM schema_migrations WHERE filename = ?').get(file)
   if (row.c > 0) {
     console.log(`[migrate] Skip: ${file}`)
     continue
   }
-
   const sql = readFileSync(join(migrationsDir, file), 'utf8')
-  await conn.query(sql)
-  await conn.query('INSERT INTO schema_migrations (filename) VALUES (?)', [file])
-  console.log(`[migrate] Applied: ${file}`)
+  try {
+    db.exec(sql)
+    db.prepare('INSERT INTO schema_migrations (filename) VALUES (?)').run(file)
+    console.log(`[migrate] Applied: ${file}`)
+  } catch (err) {
+    console.error(`[migrate] Failed on ${file}:`, err.message)
+    process.exit(1)
+  }
 }
 
-await conn.end()
+db.close()
 console.log('[migrate] Done')

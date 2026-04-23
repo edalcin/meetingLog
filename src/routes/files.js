@@ -4,13 +4,13 @@ import { createReadStream, existsSync } from 'fs'
 import { writeFile, unlink } from 'fs/promises'
 import { join, extname } from 'path'
 import { Readable } from 'stream'
-import pool from '../db.js'
+import db from '../db.js'
 import { generateThumbnail } from '../services/thumbnails.js'
 
 const files = new Hono()
 
 const FILES_PATH = process.env.FILES_PATH || '/app/data/uploads'
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_MIMES = ['image/png', 'image/jpeg', 'application/pdf']
 
 function detectMimeType(uint8Array) {
@@ -22,27 +22,23 @@ function detectMimeType(uint8Array) {
   return null
 }
 
-// ── US1: List files ────────────────────────────────────────────────────────
-files.get('/meetings/:meetingId/files', async (c) => {
+// List files for a meeting
+files.get('/meetings/:meetingId/files', (c) => {
   const meetingId = Number(c.req.param('meetingId'))
   if (!meetingId) return c.json({ error: 'ID inválido' }, 400)
-  const [rows] = await pool.query(
+  const rows = db.prepare(
     `SELECT id, reuniao_id, filename_original, filename_stored, letter,
             mime_type, file_size, criado_em
-     FROM arquivo WHERE reuniao_id = ? ORDER BY letter ASC`,
-    [meetingId]
-  )
+     FROM arquivo WHERE reuniao_id = ? ORDER BY letter ASC`
+  ).all(meetingId)
   return c.json(rows)
 })
 
-// ── US1: Serve thumbnail ───────────────────────────────────────────────────
-files.get('/files/:fileId/thumbnail', async (c) => {
+// Serve thumbnail
+files.get('/files/:fileId/thumbnail', (c) => {
   const fileId = Number(c.req.param('fileId'))
   if (!fileId) return c.json({ error: 'ID inválido' }, 400)
-  const [[row]] = await pool.query(
-    'SELECT filename_stored FROM arquivo WHERE id = ?',
-    [fileId]
-  )
+  const row = db.prepare('SELECT filename_stored FROM arquivo WHERE id = ?').get(fileId)
   if (!row) return c.json({ error: 'Arquivo não encontrado' }, 404)
   const stem = row.filename_stored.replace(/\.[^.]+$/, '')
   const thumbPath = join(FILES_PATH, 'thumbnails', `${stem}.jpg`)
@@ -53,14 +49,11 @@ files.get('/files/:fileId/thumbnail', async (c) => {
   })
 })
 
-// ── US2: Serve original file ───────────────────────────────────────────────
-files.get('/files/:fileId/content', async (c) => {
+// Serve original file
+files.get('/files/:fileId/content', (c) => {
   const fileId = Number(c.req.param('fileId'))
   if (!fileId) return c.json({ error: 'ID inválido' }, 400)
-  const [[row]] = await pool.query(
-    'SELECT filename_stored, mime_type FROM arquivo WHERE id = ?',
-    [fileId]
-  )
+  const row = db.prepare('SELECT filename_stored, mime_type FROM arquivo WHERE id = ?').get(fileId)
   if (!row) return c.json({ error: 'Arquivo não encontrado' }, 404)
   const filePath = join(FILES_PATH, row.filename_stored)
   if (!existsSync(filePath)) return c.json({ error: 'Arquivo não encontrado no disco' }, 404)
@@ -73,7 +66,7 @@ files.get('/files/:fileId/content', async (c) => {
   })
 })
 
-// ── US1: Upload file ───────────────────────────────────────────────────────
+// Upload file
 files.post(
   '/meetings/:meetingId/files',
   bodyLimit({
@@ -90,12 +83,10 @@ files.post(
       return c.json({ error: 'Nenhum arquivo enviado' }, 400)
     }
 
-    // Pre-check MIME from Content-Type
     if (!ALLOWED_MIMES.includes(file.type)) {
       return c.json({ error: 'Tipo de arquivo não permitido. Use PNG, JPG ou PDF.' }, 400)
     }
 
-    // Read buffer and validate magic bytes
     const buffer = await file.arrayBuffer()
     const uint8Array = new Uint8Array(buffer)
     const detectedMime = detectMimeType(uint8Array)
@@ -103,23 +94,17 @@ files.post(
       return c.json({ error: 'Tipo de arquivo não permitido. Use PNG, JPG ou PDF.' }, 400)
     }
 
-    // Verify meeting exists and get base filename from data_hora
-    const [[reunion]] = await pool.query(
-      "SELECT id, DATE_FORMAT(data_hora, '%Y-%m-%d_%Hh%i') AS base_filename FROM reuniao WHERE id = ?",
-      [meetingId]
-    )
+    const reunion = db.prepare(
+      "SELECT id, strftime('%Y-%m-%d_%Hh%M', data_hora) AS base_filename FROM reuniao WHERE id = ?"
+    ).get(meetingId)
     if (!reunion) return c.json({ error: 'Reunião não encontrada' }, 404)
 
-    // Determine next available letter
-    const [[letterRow]] = await pool.query(
-      "SELECT COALESCE(MAX(letter), CHAR(96)) AS maxLetter FROM arquivo WHERE reuniao_id = ?",
-      [meetingId]
-    )
-    const raw = letterRow.maxLetter
-    const maxLetter = raw instanceof Buffer ? raw.toString() : String(raw)
+    const letterRow = db.prepare(
+      "SELECT COALESCE(MAX(letter), CHAR(96)) AS maxLetter FROM arquivo WHERE reuniao_id = ?"
+    ).get(meetingId)
+    const maxLetter = String(letterRow.maxLetter)
     const nextLetter = String.fromCharCode(maxLetter.charCodeAt(0) + 1)
 
-    // Build stored filename: base_letter.ext
     const origExt = (extname(file.name).toLowerCase()) ||
       (detectedMime === 'application/pdf' ? '.pdf' : detectedMime === 'image/png' ? '.png' : '.jpg')
     const filenameStored = `${reunion.base_filename}_${nextLetter}${origExt}`
@@ -127,10 +112,8 @@ files.post(
     const thumbStem = `${reunion.base_filename}_${nextLetter}`
     const thumbPath = join(FILES_PATH, 'thumbnails', `${thumbStem}.jpg`)
 
-    // Write file to disk
     await writeFile(storedPath, Buffer.from(buffer))
 
-    // Generate thumbnail — clean up stored file on failure
     try {
       await generateThumbnail(storedPath, thumbPath, detectedMime)
     } catch (err) {
@@ -139,30 +122,24 @@ files.post(
       return c.json({ error: 'Erro ao gerar thumbnail' }, 500)
     }
 
-    // Insert DB record
-    const [result] = await pool.query(
+    const result = db.prepare(
       `INSERT INTO arquivo (reuniao_id, filename_original, filename_stored, letter, mime_type, file_size)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [meetingId, file.name, filenameStored, nextLetter, detectedMime, uint8Array.length]
-    )
-    const [[created]] = await pool.query(
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(meetingId, file.name, filenameStored, nextLetter, detectedMime, uint8Array.length)
+    const created = db.prepare(
       `SELECT id, reuniao_id, filename_original, filename_stored, letter,
               mime_type, file_size, criado_em
-       FROM arquivo WHERE id = ?`,
-      [result.insertId]
-    )
+       FROM arquivo WHERE id = ?`
+    ).get(Number(result.lastInsertRowid))
     return c.json(created, 201)
   }
 )
 
-// ── US3: Delete file ───────────────────────────────────────────────────────
+// Delete file
 files.delete('/files/:fileId', async (c) => {
   const fileId = Number(c.req.param('fileId'))
   if (!fileId) return c.json({ error: 'ID inválido' }, 400)
-  const [[row]] = await pool.query(
-    'SELECT filename_stored FROM arquivo WHERE id = ?',
-    [fileId]
-  )
+  const row = db.prepare('SELECT filename_stored FROM arquivo WHERE id = ?').get(fileId)
   if (!row) return c.json({ error: 'Arquivo não encontrado' }, 404)
 
   const storedPath = join(FILES_PATH, row.filename_stored)
@@ -176,7 +153,7 @@ files.delete('/files/:fileId', async (c) => {
     if (err.code !== 'ENOENT') console.warn('[files] Could not delete thumbnail:', err.message)
   })
 
-  await pool.query('DELETE FROM arquivo WHERE id = ?', [fileId])
+  db.prepare('DELETE FROM arquivo WHERE id = ?').run(fileId)
   return c.json({ ok: true })
 })
 

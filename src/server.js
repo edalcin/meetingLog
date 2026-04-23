@@ -11,16 +11,15 @@ import participantsRouter from './routes/participants.js'
 import projectsRouter from './routes/projects.js'
 import institutionsRouter from './routes/institutions.js'
 import maintenanceRouter from './routes/maintenance.js'
-import pool from './db.js'
+import db from './db.js'
 
 // Rate limiting state for PIN auth (in-memory, resets on restart — acceptable for single-user)
-const authAttempts = new Map() // ip → { count: number, lockedUntil: number }
+const authAttempts = new Map()
 const AUTH_MAX = 5
-const AUTH_LOCK_MS = 15 * 60 * 1000 // 15 minutes
+const AUTH_LOCK_MS = 15 * 60 * 1000
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// Bootstrap uploads directory
 const FILES_PATH = process.env.FILES_PATH
 if (FILES_PATH) {
   try {
@@ -34,7 +33,6 @@ if (FILES_PATH) {
 
 const app = new Hono()
 
-// Security headers middleware — applied to all responses
 app.use('*', async (c, next) => {
   await next()
   c.header('X-Content-Type-Options', 'nosniff')
@@ -52,17 +50,15 @@ app.use('*', async (c, next) => {
   ].join('; '))
 })
 
-// Health check
-app.get('/api/health', async (c) => {
+app.get('/api/health', (c) => {
   try {
-    await pool.query('SELECT 1')
+    db.prepare('SELECT 1').get()
     return c.json({ status: 'ok', db: 'connected' })
   } catch {
     return c.json({ status: 'error', db: 'disconnected' }, 503)
   }
 })
 
-// PIN auth check — rate limited + timing-safe
 app.post('/api/auth/check', async (c) => {
   const ip = c.req.header('x-forwarded-for')?.split(',')[0].trim()
            ?? c.env?.incoming?.socket?.remoteAddress
@@ -90,28 +86,15 @@ app.post('/api/auth/check', async (c) => {
   return c.json({ ok })
 })
 
-// Files API (handles /api/meetings/:id/files and /api/files/:id/*)
 app.route('/api', filesRouter)
-
-// Meetings API
 app.route('/api/meetings', meetingsRouter)
-
-// Participants API
 app.route('/api/participants', participantsRouter)
-
-// Projects API
 app.route('/api/projects', projectsRouter)
-
-// Institutions API
 app.route('/api/institutions', institutionsRouter)
-
-// Maintenance API
 app.route('/api/maintenance', maintenanceRouter)
 
-// Serve static files
 app.use('/*', serveStatic({ root: './public' }))
 
-// Fallback to index.html for SPA
 app.get('*', (c) => {
   const html = readFileSync(join(__dirname, '../public/index.html'), 'utf8')
   return c.html(html)
@@ -125,8 +108,8 @@ const server = serve({ fetch: app.fetch, port }, () => {
 function shutdown(signal) {
   console.log(`[server] ${signal} received, shutting down...`)
   server.closeAllConnections()
-  server.close(async () => {
-    await pool.end()
+  server.close(() => {
+    db.close()
     console.log('[server] Shutdown complete.')
     process.exit(0)
   })

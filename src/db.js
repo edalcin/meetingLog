@@ -1,19 +1,13 @@
-import mysql from 'mysql2/promise'
+import Database from 'better-sqlite3'
+import { mkdirSync } from 'fs'
+import { dirname } from 'path'
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  waitForConnections: true,
-  connectionLimit: 5,
-  queueLimit: 0,
-  charset: 'utf8mb4'
-})
+export const DB_PATH = process.env.DB_PATH || '/data/db/meetinglog.sqlite'
 
-pool.on('error', (err) => {
-  console.error('[db] Pool error:', err)
-})
+mkdirSync(dirname(DB_PATH), { recursive: true })
 
-export default pool
+const db = new Database(DB_PATH)
+db.pragma('journal_mode = WAL')
+db.pragma('foreign_keys = ON')
+
+export default db

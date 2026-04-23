@@ -5,32 +5,14 @@ services:
     ports:
       - "${APP_PORT:-3000}:${APP_PORT:-3000}"
     environment:
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PATH=${DB_PATH:-/data/db/meetinglog.sqlite}
       - APP_PIN=${APP_PIN}
       - APP_PORT=${APP_PORT:-3000}
-    depends_on:
-      db:
-        condition: service_healthy
-  db:
-    image: mariadb:11
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_USER=${DB_USER}
-      - MYSQL_PASSWORD=${DB_PASSWORD}
-    ports:
-      - "3306:3306"
+      - FILES_PATH=${FILES_PATH:-/data/uploads}
     volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      start_period: 10s
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      - db_data:/data/db
+      - uploads_data:/data/uploads
+    restart: unless-stopped
 volumes:
   db_data:
+  uploads_data:

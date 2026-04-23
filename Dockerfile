@@ -1,6 +1,8 @@
 # Stage 1: Builder
 FROM node:22-alpine AS builder
 WORKDIR /app
+# Build tools required for better-sqlite3 native compilation
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci
 COPY src ./src
@@ -10,11 +12,10 @@ COPY public ./public
 
 # Stage 2: Runtime
 FROM node:22-alpine AS runner
-RUN apk add --no-cache mysql-client poppler-utils su-exec
+RUN apk add --no-cache poppler-utils su-exec
 
 WORKDIR /app
 
-# Create non-privileged user for runtime
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=builder /app/node_modules ./node_modules

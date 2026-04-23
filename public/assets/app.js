@@ -205,6 +205,13 @@ function app() {
     maintReplaceLoading: false,
     maintReplaceError: '',
 
+    // Maintenance — backup & restore
+    backupLoading: false,
+    backupError: '',
+    restoreFile: null,
+    restoreLoading: false,
+    restoreError: '',
+
     get filteredMaintFromProjects() {
       const q = this.maintReplaceFromSearch.toLowerCase()
       return this.allProjects.filter(pr => {
@@ -1380,6 +1387,48 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
         this.maintDryRunResult = null
       } catch {
         this.showToast('Erro de conexão ao criar projeto.', true)
+      }
+    },
+
+    async downloadBackup() {
+      this.backupError = ''
+      this.backupLoading = true
+      try {
+        const res = await fetch('/api/maintenance/backup')
+        if (!res.ok) { this.backupError = 'Erro ao gerar backup.'; return }
+        const blob = await res.blob()
+        const date = new Date().toISOString().slice(0, 10)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `meetinglog-backup-${date}.sqlite`
+        a.click()
+        URL.revokeObjectURL(url)
+      } catch {
+        this.backupError = 'Erro de conexão ao gerar backup.'
+      } finally {
+        this.backupLoading = false
+      }
+    },
+
+    async confirmRestore() {
+      if (!this.restoreFile) return
+      if (!confirm('ATENÇÃO: Esta operação substituirá TODOS os dados atuais pelo conteúdo do arquivo de backup e reiniciará o servidor. Confirma?')) return
+      this.restoreError = ''
+      this.restoreLoading = true
+      try {
+        const form = new FormData()
+        form.append('file', this.restoreFile)
+        form.append('confirm', 'REPLACE')
+        const res = await fetch('/api/maintenance/restore', { method: 'POST', body: form })
+        const data = await res.json()
+        if (!res.ok) { this.restoreError = data.error || 'Erro ao restaurar backup.'; return }
+        alert('Restauração concluída! O servidor será reiniciado. Recarregue a página em alguns segundos.')
+        setTimeout(() => window.location.reload(), 5000)
+      } catch {
+        this.restoreError = 'Erro de conexão ao restaurar backup.'
+      } finally {
+        this.restoreLoading = false
       }
     },
 

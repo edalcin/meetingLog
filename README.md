@@ -1,27 +1,29 @@
 # Registro de Reuniões
 
-Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva.
+Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva. Roda em um único container Docker com banco de dados SQLite embutido — sem dependências externas.
 
 ## Funcionalidades
 
-- Listagem de reuniões com filtro e ordenação
-- Registro de novas reuniões
-- Edição de reuniões existentes
+- Listagem, registro e edição de reuniões
+- Participantes por instituição, com cargo e lotação
+- Projetos vinculados às reuniões e às instituições
+- Pautas e links por reunião
+- Notas ricas por reunião e por projeto (editor Quill)
+- Gestão de arquivos anexados por reunião
+- Backup e restauração do banco de dados pela própria interface
 - Autenticação via PIN
-- Suporte a PWA (instalável em dispositivos móveis)
+- PWA — instalável em dispositivos móveis
 
 ## Quick Start com Docker
 
 ```bash
 docker run -d \
   --name meetinglog \
+  --restart unless-stopped \
   -p 3000:3000 \
-  -e DB_HOST=your-mariadb-host \
-  -e DB_PORT=3306 \
-  -e DB_NAME=your-database-name \
-  -e DB_USER=your-db-user \
-  -e DB_PASSWORD=your-db-password \
-  -e APP_PIN=your-pin \
+  -e APP_PIN=seu-pin \
+  -e DB_PATH=/data/db/meetinglog.sqlite \
+  -v /caminho/local/db:/data/db \
   ghcr.io/edalcin/meetinglog:latest
 ```
 
@@ -31,11 +33,50 @@ Acesse: `http://localhost:3000`
 
 | Variável | Obrigatória | Padrão | Descrição |
 |----------|-------------|--------|-----------|
-| `DB_HOST` | Sim | — | Host do MariaDB |
-| `DB_PORT` | Sim | — | Porta do MariaDB |
-| `DB_NAME` | Sim | — | Nome do banco de dados |
-| `DB_USER` | Sim | — | Usuário do banco |
-| `DB_PASSWORD` | Sim | — | Senha do banco |
-| `APP_PIN` | Sim | — | PIN de acesso |
+| `APP_PIN` | Sim | — | PIN de acesso à aplicação |
+| `DB_PATH` | Não | `/data/db/meetinglog.sqlite` | Caminho do arquivo SQLite dentro do container |
+| `FILES_PATH` | Não | — | Diretório para upload de arquivos dentro do container |
 | `APP_PORT` | Não | `3000` | Porta HTTP do container |
 
+## Migração a partir do MariaDB
+
+Na primeira inicialização, se `MARIADB_HOST` estiver definida e o arquivo SQLite ainda não existir, o container migra os dados automaticamente e depois inicia normalmente:
+
+```bash
+docker run -d \
+  --name meetinglog \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -e APP_PIN=seu-pin \
+  -e DB_PATH=/data/db/meetinglog.sqlite \
+  -e MARIADB_HOST=192.168.1.10 \
+  -e MARIADB_PORT=3306 \
+  -e MARIADB_DB=reunioes \
+  -e MARIADB_USER=reunioes_app \
+  -e MARIADB_PASS=sua-senha \
+  -v /caminho/local/db:/data/db \
+  ghcr.io/edalcin/meetinglog:latest
+```
+
+Após a migração concluir (veja os logs: `[migrate] Concluído!`), as variáveis `MARIADB_*` podem ser removidas do container.
+
+## Backup e Restauração
+
+Na seção **Manutenção** da interface:
+
+- **Backup** — baixa o arquivo `.sqlite` completo com todos os dados
+- **Restaurar** — sobe um arquivo `.sqlite`; o servidor reinicia automaticamente após a restauração
+
+## Desenvolvimento
+
+```bash
+npm install       # instala dependências
+npm run dev       # inicia com hot reload (nodemon)
+npm run migrate   # aplica migrations SQLite pendentes
+npm test          # executa testes
+docker build .    # constrói a imagem Docker
+```
+
+## Instalação no UNRAID
+
+Consulte [docs/unraid-install.md](docs/unraid-install.md) para instruções detalhadas.

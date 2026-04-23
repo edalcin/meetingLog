@@ -1,5 +1,5 @@
-docs/
-docs/source/scripts/
+docs/source/
+docs/superpowers/
 node_modules/
 .env
 *.log

@@ -110,13 +110,48 @@ const server = serve({ fetch: app.fetch, port }, () => {
   console.log(`[server] Meeting Log running at http://localhost:${port}`)
 })
 
+const dashPublicApp = new Hono()
+
+dashPublicApp.use('*', async (c, next) => {
+  await next()
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'DENY')
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  c.header('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
+    "font-src 'self' https://cdn.jsdelivr.net",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'"
+  ].join('; '))
+})
+
+dashPublicApp.route('/api/dashboard', dashboardRouter)
+dashPublicApp.use('/assets/*', serveStatic({ root: './public' }))
+dashPublicApp.use('/favicon*', serveStatic({ root: './public' }))
+dashPublicApp.get('*', (c) => {
+  const html = readFileSync(join(__dirname, '../public/dash-public.html'), 'utf8')
+  return c.html(html)
+})
+
+const dashPort = Number(process.env.DASHPORT ?? 3774)
+const dashServer = serve({ fetch: dashPublicApp.fetch, port: dashPort }, () => {
+  console.log(`[server] Public Dashboard running at http://localhost:${dashPort}`)
+})
+
 function shutdown(signal) {
   console.log(`[server] ${signal} received, shutting down...`)
   server.closeAllConnections()
+  dashServer.closeAllConnections()
   server.close(() => {
-    db.close()
-    console.log('[server] Shutdown complete.')
-    process.exit(0)
+    dashServer.close(() => {
+      db.close()
+      console.log('[server] Shutdown complete.')
+      process.exit(0)
+    })
   })
 }
 

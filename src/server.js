@@ -11,6 +11,7 @@ import participantsRouter from './routes/participants.js'
 import projectsRouter from './routes/projects.js'
 import institutionsRouter from './routes/institutions.js'
 import maintenanceRouter from './routes/maintenance.js'
+import dashboardRouter from './routes/dashboard.js'
 import db from './db.js'
 
 // Rate limiting state for PIN auth (in-memory, resets on restart — acceptable for single-user)
@@ -95,6 +96,7 @@ app.route('/api/participants', participantsRouter)
 app.route('/api/projects', projectsRouter)
 app.route('/api/institutions', institutionsRouter)
 app.route('/api/maintenance', maintenanceRouter)
+app.route('/api/dashboard', dashboardRouter)
 
 app.use('/*', serveStatic({ root: './public' }))
 

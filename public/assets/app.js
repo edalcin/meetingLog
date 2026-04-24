@@ -1421,8 +1421,12 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
         form.append('file', this.restoreFile)
         form.append('confirm', 'REPLACE')
         const res = await fetch('/api/maintenance/restore', { method: 'POST', body: form })
-        const data = await res.json()
-        if (!res.ok) { this.restoreError = data.error || 'Erro ao restaurar backup.'; return }
+        if (!res.ok) {
+          let errMsg = 'Erro ao restaurar backup.'
+          try { const d = await res.json(); errMsg = d.error || errMsg } catch {}
+          this.restoreError = errMsg
+          return
+        }
         alert('Restauração concluída! O servidor será reiniciado. Recarregue a página em alguns segundos.')
         setTimeout(() => window.location.reload(), 5000)
       } catch {

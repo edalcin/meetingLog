@@ -94,7 +94,7 @@ maintenance.post(
     const valid = expected.every((b, i) => magic[i] === b)
     if (!valid) return c.json({ error: 'Arquivo não é um banco SQLite válido' }, 400)
 
-    const tmpPath = join('/tmp', `meetinglog-restore-${Date.now()}.sqlite`)
+    const tmpPath = join(dirname(DB_PATH), `meetinglog-restore-${Date.now()}.sqlite.tmp`)
     await writeFile(tmpPath, Buffer.from(buffer))
 
     try {

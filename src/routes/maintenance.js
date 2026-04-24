@@ -2,9 +2,9 @@ import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { createReadStream, statSync } from 'fs'
 import { writeFile, unlink, rename } from 'fs/promises'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { Readable } from 'stream'
-import db, { DB_PATH } from '../db.js'
+import db, { DB_PATH, reloadDB } from '../db.js'
 
 const maintenance = new Hono()
 
@@ -99,15 +99,18 @@ maintenance.post(
 
     try {
       db.close()
+      // Remove stale WAL/SHM from the old DB so they aren't misapplied to the restored file
+      await unlink(`${DB_PATH}-wal`).catch(() => {})
+      await unlink(`${DB_PATH}-shm`).catch(() => {})
       await rename(tmpPath, DB_PATH)
     } catch (err) {
       await unlink(tmpPath).catch(() => {})
+      reloadDB() // re-open old DB since we closed it
       throw err
     }
 
-    // Schedule restart after response is sent
-    setTimeout(() => process.exit(0), 500)
-    return c.json({ ok: true, message: 'Restauração concluída. O servidor será reiniciado automaticamente.' })
+    reloadDB() // hot-swap: open the restored DB without restarting the server
+    return c.json({ ok: true, message: 'Restauração concluída.' })
   }
 )
 

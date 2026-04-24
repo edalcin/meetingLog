@@ -1427,8 +1427,8 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
           this.restoreError = errMsg
           return
         }
-        alert('Restauração concluída! O servidor será reiniciado. Recarregue a página em alguns segundos.')
-        setTimeout(() => window.location.reload(), 5000)
+        alert('Restauração concluída! Recarregando...')
+        setTimeout(() => window.location.reload(), 500)
       } catch {
         this.restoreError = 'Erro de conexão ao restaurar backup.'
       } finally {

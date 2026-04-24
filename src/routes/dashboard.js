@@ -102,16 +102,18 @@ dashboard.get('/', (c) => {
 
   const projetoRows = db.prepare(
     `SELECT rp.reuniao_id, pr.id AS projeto_id, pr.nome AS projeto_nome
-     FROM reuniao r ${where}
+     FROM reuniao r
      JOIN reuniao_projeto rp ON rp.reuniao_id = r.id
-     JOIN projeto pr ON pr.id = rp.projeto_id`
+     JOIN projeto pr ON pr.id = rp.projeto_id
+     ${where}`
   ).all(...params)
 
   const participanteRows = db.prepare(
     `SELECT rpa.reuniao_id, pa.id AS participante_id, pa.nome AS participante_nome
-     FROM reuniao r ${where}
+     FROM reuniao r
      JOIN reuniao_participante rpa ON rpa.reuniao_id = r.id
-     JOIN participante pa ON pa.id = rpa.participante_id`
+     JOIN participante pa ON pa.id = rpa.participante_id
+     ${where}`
   ).all(...params)
 
   const projetosByMeeting = new Map()

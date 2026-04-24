@@ -133,7 +133,7 @@ dashPublicApp.route('/api/dashboard', dashboardRouter)
 dashPublicApp.use('/assets/*', serveStatic({ root: './public' }))
 dashPublicApp.use('/favicon*', serveStatic({ root: './public' }))
 dashPublicApp.get('*', (c) => {
-  const html = readFileSync(join(__dirname, '../public/dash-public.html'), 'utf8')
+  const html = readFileSync(join(__dirname, 'dash-public.html'), 'utf8')
   return c.html(html)
 })
 

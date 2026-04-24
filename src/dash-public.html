@@ -295,7 +295,39 @@ function dashboard() {
 
     async init() {
       await this.loadOptions()
+      this.resolveFilterFromUrl()
       await this.loadData()
+    },
+
+    resolveFilterFromUrl() {
+      const p = new URLSearchParams(window.location.search)
+      if (p.has('ano')) {
+        this.filterType = 'year'
+        this.filterValue = p.get('ano')
+      } else if (p.has('projeto')) {
+        const nome = p.get('projeto').toLowerCase()
+        const found = this.filterOptions.projetos.find(x => x.nome.toLowerCase() === nome)
+        if (found) { this.filterType = 'project'; this.filterValue = String(found.id) }
+      } else if (p.has('participante')) {
+        const nome = p.get('participante').toLowerCase()
+        const found = this.filterOptions.participantes.find(x => x.nome.toLowerCase() === nome)
+        if (found) { this.filterType = 'participant'; this.filterValue = String(found.id) }
+      }
+    },
+
+    updateUrl() {
+      const p = new URLSearchParams()
+      if (this.filterType === 'year' && this.filterValue) {
+        p.set('ano', this.filterValue)
+      } else if (this.filterType === 'project' && this.filterValue) {
+        const proj = this.filterOptions.projetos.find(x => String(x.id) === String(this.filterValue))
+        if (proj) p.set('projeto', proj.nome)
+      } else if (this.filterType === 'participant' && this.filterValue) {
+        const part = this.filterOptions.participantes.find(x => String(x.id) === String(this.filterValue))
+        if (part) p.set('participante', part.nome)
+      }
+      const qs = p.toString()
+      history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
     },
 
     async loadOptions() {
@@ -311,6 +343,7 @@ function dashboard() {
         const params = new URLSearchParams({ filter: this.filterType, value: this.filterValue })
         const res = await fetch(`/api/dashboard?${params}`)
         this.data = await res.json()
+        this.updateUrl()
         await this.$nextTick()
         this.renderCharts()
       } catch {}

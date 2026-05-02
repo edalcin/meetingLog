@@ -454,10 +454,12 @@ function dashboard() {
     },
 
     async init() {
-      if (sessionStorage.getItem('pin_ok') === '1') {
+      if (sessionStorage.getItem('pin_ok') === '1' && sessionStorage.getItem('pin_val')) {
         this.authenticated = true
         await this.loadOptions()
         await this.loadData()
+      } else {
+        sessionStorage.removeItem('pin_ok')
       }
     },
 

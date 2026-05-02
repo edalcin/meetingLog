@@ -100,6 +100,7 @@ O endpoint `/api/files/:id/content` serve PDFs com `X-Frame-Options: SAMEORIGIN`
 | `APP_PIN` | — | PIN de acesso (obrigatório) |
 | `APP_PORT` | `3000` | Porta HTTP |
 | `FILES_PATH` | — | Diretório de uploads |
+| `BASE_URL` | — | URL base pública para geração de links compartilhados |
 
 ## Entrypoint (docker-entrypoint.sh)
 

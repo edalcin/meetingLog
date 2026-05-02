@@ -12,6 +12,7 @@ import projectsRouter from './routes/projects.js'
 import institutionsRouter from './routes/institutions.js'
 import maintenanceRouter from './routes/maintenance.js'
 import dashboardRouter from './routes/dashboard.js'
+import sharedLinksRouter from './routes/shared-links.js'
 import db from './db.js'
 
 // Rate limiting state for PIN auth (in-memory, resets on restart — acceptable for single-user)
@@ -97,6 +98,21 @@ app.route('/api/projects', projectsRouter)
 app.route('/api/institutions', institutionsRouter)
 app.route('/api/maintenance', maintenanceRouter)
 app.route('/api/dashboard', dashboardRouter)
+app.route('/api/shared-links', sharedLinksRouter)
+
+app.get('/api/p/:token', (c) => {
+  const token = c.req.param('token')
+  const row = db.prepare(
+    'SELECT filter_type, filter_value, descricao FROM link_publico WHERE token = ? AND revogado = 0'
+  ).get(token)
+  if (!row) return c.json({ error: 'Link não encontrado ou foi revogado' }, 404)
+  return c.json(row)
+})
+
+app.get('/p/:token', (c) => {
+  const html = readFileSync(join(__dirname, '../public/shared.html'), 'utf8')
+  return c.html(html)
+})
 
 app.use('/*', serveStatic({ root: './public' }))
 
@@ -110,48 +126,13 @@ const server = serve({ fetch: app.fetch, port }, () => {
   console.log(`[server] Meeting Log running at http://localhost:${port}`)
 })
 
-const dashPublicApp = new Hono()
-
-dashPublicApp.use('*', async (c, next) => {
-  await next()
-  c.header('X-Content-Type-Options', 'nosniff')
-  c.header('X-Frame-Options', 'DENY')
-  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
-  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  c.header('Content-Security-Policy', [
-    "default-src 'self'",
-    "script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
-    "font-src 'self' https://cdn.jsdelivr.net",
-    "img-src 'self' data: blob:",
-    "connect-src 'self'",
-    "frame-ancestors 'none'"
-  ].join('; '))
-})
-
-dashPublicApp.route('/api/dashboard', dashboardRouter)
-dashPublicApp.use('/assets/*', serveStatic({ root: './public' }))
-dashPublicApp.use('/favicon*', serveStatic({ root: './public' }))
-dashPublicApp.get('*', (c) => {
-  const html = readFileSync(join(__dirname, 'dash-public.html'), 'utf8')
-  return c.html(html)
-})
-
-const dashPort = Number(process.env.DASHPORT ?? 3774)
-const dashServer = serve({ fetch: dashPublicApp.fetch, port: dashPort }, () => {
-  console.log(`[server] Public Dashboard running at http://localhost:${dashPort}`)
-})
-
 function shutdown(signal) {
   console.log(`[server] ${signal} received, shutting down...`)
   server.closeAllConnections()
-  dashServer.closeAllConnections()
   server.close(() => {
-    dashServer.close(() => {
-      db.close()
-      console.log('[server] Shutdown complete.')
-      process.exit(0)
-    })
+    db.close()
+    console.log('[server] Shutdown complete.')
+    process.exit(0)
   })
 }
 

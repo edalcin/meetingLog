@@ -1252,6 +1252,15 @@ function app() {
       }
     },
 
+    copyMeetingLink() {
+      const url = `${window.location.origin}/meeting/${this.meetingInfo.id}`
+      navigator.clipboard.writeText(url).then(() => {
+        this.showToast('Link copiado!')
+      }).catch(() => {
+        this.showToast('Erro ao copiar link.', true)
+      })
+    },
+
     printMeetingInfo() {
       const m = this.meetingInfo
       const dataHora = this.formatDate(m.data_hora)

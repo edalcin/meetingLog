@@ -114,6 +114,11 @@ app.get('/p/:token', (c) => {
   return c.html(html)
 })
 
+app.get('/meeting/:id', (c) => {
+  const html = readFileSync(join(__dirname, '../public/meeting.html'), 'utf8')
+  return c.html(html)
+})
+
 app.use('/*', serveStatic({ root: './public' }))
 
 app.get('*', (c) => {

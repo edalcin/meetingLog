@@ -42,22 +42,30 @@ participants.post('/', async (c) => {
 
   const ativo = body.ativo !== false ? 1 : 0
 
-  const result = db.prepare(
-    'INSERT INTO participante (nome, instituicao, lotacao, cargo, email, ativo, ativo_manual, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(
-    nome,
-    body.instituicao?.trim() || null,
-    body.lotacao?.trim() || null,
-    body.cargo?.trim() || null,
-    body.email?.trim() || null,
-    ativo,
-    ativo,
-    body.notas || null
-  )
-  const row = db.prepare(
-    'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id = ?'
-  ).get(Number(result.lastInsertRowid))
-  return c.json(row, 201)
+  try {
+    const result = db.prepare(
+      'INSERT INTO participante (nome, instituicao, lotacao, cargo, email, ativo, ativo_manual, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+      nome,
+      body.instituicao?.trim() || null,
+      body.lotacao?.trim() || null,
+      body.cargo?.trim() || null,
+      body.email?.trim() || null,
+      ativo,
+      ativo,
+      body.notas || null
+    )
+    const row = db.prepare(
+      'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id = ?'
+    ).get(Number(result.lastInsertRowid))
+    return c.json(row, 201)
+  } catch (err) {
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return c.json({ error: 'Já existe um participante com este nome' }, 409)
+    }
+    console.error('[POST /api/participants]', err)
+    return c.json({ error: 'Erro ao criar participante' }, 500)
+  }
 })
 
 // PUT /api/participants/:id
@@ -71,24 +79,32 @@ participants.put('/:id', async (c) => {
 
   const ativo = body.ativo !== false ? 1 : 0
 
-  const result = db.prepare(
-    'UPDATE participante SET nome=?, instituicao=?, lotacao=?, cargo=?, email=?, ativo=?, ativo_manual=?, notas=? WHERE id=?'
-  ).run(
-    nome,
-    body.instituicao?.trim() || null,
-    body.lotacao?.trim() || null,
-    body.cargo?.trim() || null,
-    body.email?.trim() || null,
-    ativo,
-    ativo,
-    body.notas || null,
-    id
-  )
-  if (result.changes === 0) return c.json({ error: 'Participante não encontrado' }, 404)
-  const row = db.prepare(
-    'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id=?'
-  ).get(id)
-  return c.json(row)
+  try {
+    const result = db.prepare(
+      'UPDATE participante SET nome=?, instituicao=?, lotacao=?, cargo=?, email=?, ativo=?, ativo_manual=?, notas=? WHERE id=?'
+    ).run(
+      nome,
+      body.instituicao?.trim() || null,
+      body.lotacao?.trim() || null,
+      body.cargo?.trim() || null,
+      body.email?.trim() || null,
+      ativo,
+      ativo,
+      body.notas || null,
+      id
+    )
+    if (result.changes === 0) return c.json({ error: 'Participante não encontrado' }, 404)
+    const row = db.prepare(
+      'SELECT id, nome, instituicao, lotacao, cargo, email, ativo, notas FROM participante WHERE id=?'
+    ).get(id)
+    return c.json(row)
+  } catch (err) {
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return c.json({ error: 'Já existe um participante com este nome' }, 409)
+    }
+    console.error('[PUT /api/participants/:id]', err)
+    return c.json({ error: 'Erro ao atualizar participante' }, 500)
+  }
 })
 
 // GET /api/participants/:id

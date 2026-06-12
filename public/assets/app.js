@@ -1554,7 +1554,8 @@ ${notesHtml ? `<section><h2>Notas</h2><div class="ql-editor">${notesHtml}</div><
         }
         this.cancelParticipantForm()
         this.showToast(isNew ? 'Participante criado!' : 'Participante atualizado!')
-      } catch {
+      } catch (err) {
+        console.error('[saveParticipant]', err)
         this.showToast('Erro de conexão.', true)
       } finally {
         this.participantFormLoading = false

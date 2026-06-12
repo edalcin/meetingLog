@@ -126,6 +126,11 @@ app.get('*', (c) => {
   return c.html(html)
 })
 
+app.onError((err, c) => {
+  console.error('[server] Unhandled error:', err)
+  return c.json({ error: 'Erro interno do servidor' }, 500)
+})
+
 const port = Number(process.env.APP_PORT ?? 3000)
 const server = serve({ fetch: app.fetch, port }, () => {
   console.log(`[server] Meeting Log running at http://localhost:${port}`)

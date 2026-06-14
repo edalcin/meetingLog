@@ -1,0 +1,9 @@
+{
+  "name": "Registro de Reuniões",
+  "short_name": "Reuniões",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#1e40af",
+  "icons": []
+}

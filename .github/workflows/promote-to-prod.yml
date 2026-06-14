@@ -1,0 +1,28 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver tag (e.g. v1.2.3)'
+        required: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull edge and re-tag
+        run: |
+          docker pull ghcr.io/edalcin/meetinglog:edge
+          docker tag ghcr.io/edalcin/meetinglog:edge ghcr.io/edalcin/meetinglog:stable
+          docker tag ghcr.io/edalcin/meetinglog:edge ghcr.io/edalcin/meetinglog:${{ github.event.inputs.version }}
+          docker push ghcr.io/edalcin/meetinglog:stable
+          docker push ghcr.io/edalcin/meetinglog:${{ github.event.inputs.version }}

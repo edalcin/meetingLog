@@ -1,110 +1,151 @@
 # meetingLog Development Guidelines
 
-Last updated: 2026-04-23
+Last updated: 2026-06-14
 
 ## Project Overview
 
-Aplicação web para registro e consulta de reuniões. Container único Node.js (Hono) servindo REST API + frontend Alpine.js, com banco de dados SQLite local (better-sqlite3). Implantado no UNRAID via Docker.
+Aplicação web para registro e consulta de reuniões. Binário único Go (chi) servindo REST API + frontend Svelte 5 embutido via `go:embed`, banco de dados SQLite (modernc.org/sqlite — puro Go, sem CGO). Implantado no UNRAID via Docker distroless (~20 MB).
 
 ## Stack Atual
 
-- **Runtime**: Node.js 22, ES modules (`import`/`export`)
-- **Framework**: Hono 4.x (`@hono/node-server`)
-- **Banco de dados**: SQLite via `better-sqlite3` (síncrono, WAL mode)
-- **Frontend**: Alpine.js CDN + Tailwind CSS CDN + Quill CDN (sem build step)
-- **Uploads**: `sharp` para geração de thumbnails
-- **Docker**: `node:22-alpine`, multi-stage build, `su-exec` para troca de usuário
+- **Runtime**: Go 1.25 (`CGO_ENABLED=0`, binário estático)
+- **Framework HTTP**: chi v5
+- **Banco de dados**: SQLite via `modernc.org/sqlite` (puro Go, WAL mode, `SetMaxOpenConns(1)`)
+- **Frontend**: Svelte 5 + Vite + TipTap + Tailwind CSS (build-time, sem CDN) + Chart.js
+- **Uploads**: `golang.org/x/image/draw` (thumbnails PNG/JPEG); PDF → ícone estático embutido
+- **Docker**: 3-stage (`node:22-alpine` → `golang:1.25-alpine` → `distroless/static-debian12:nonroot`)
 
 ## Estrutura do Projeto
 
 ```text
-src/
-  server.js         # Entry point Hono, health check, graceful shutdown
-  db.js             # Singleton better-sqlite3 (WAL + foreign keys)
-  migrate.js        # Runner de migrations SQLite (migrations/*.sql)
-  routes/
-    meetings.js     # CRUD de reuniões
-    participants.js # CRUD de participantes
-    projects.js     # CRUD de projetos
-    institutions.js # CRUD de instituições
-    files.js        # Upload/download de arquivos
-    maintenance.js  # Substituição de projeto + backup/restore SQLite
-migrations/
-  001_sqlite_init.sql   # Schema completo SQLite (idempotente)
-public/             # Frontend estático (HTML, Alpine.js, PWA assets)
-docs/               # Documentação (guia UNRAID)
-.github/workflows/  # CI/CD (publica no GHCR a cada push no main)
+cmd/meetinglog/main.go          # Entry point, -healthcheck flag, graceful shutdown
+internal/
+  config/config.go              # Env vars (nomes mantidos do Node: APP_PIN, DB_PATH, etc.)
+  model/types.go                # Structs Go com JSON tags
+  store/
+    open.go                     # Abre DB, aplica schema, backfill Delta→HTML
+    schema.sql                  # Schema SQLite idempotente (IF NOT EXISTS), embutido via go:embed
+    quilldelta.go               # Conversor Quill Delta JSON → HTML (backfill único no startup)
+    meetings.go participants.go projects.go institutions.go
+    dashboard.go files.go sharelinks.go backup.go
+    errors.go tx.go
+  server/
+    server.go                   # Server struct, chi router, buildRouter()
+    assets.go                   # //go:embed all:web/dist
+    respond.go                  # writeJSON, parseID, handleStoreErr
+    handlers_{auth,health,meetings,participants,projects,institutions,
+              dashboard,files,maintenance,sharelinks,public}.go
+    middleware_{security,auth,csrf,throttle}.go
+    web/dist/                   # Output do Vite (gerado em build, embutido no binário)
+  security/                     # password, tokens, csrf, sanitize, paths
+  sessions/store.go             # Sessões server-side (SQLite-backed)
+  storage/local.go              # Backend local para uploads
+  thumbnail/thumbnail.go        # Thumbnails PNG/JPEG + ícone PDF embutido
+frontend/                       # Svelte 5 + Vite (npm run build → internal/server/web/dist)
+  src/
+    App.svelte lib/api.js lib/stores/auth.js
+    lib/components/{LoginPage,MeetingsTab,MeetingFormModal,MeetingInfoModal,
+                    ParticipantsTab,ProjectsTab,InstitutionsTab,
+                    DashboardTab,MaintenanceTab,SharedView,MeetingView,RichEditor}.svelte
+.github/workflows/              # CI: build-and-publish, promote-to-prod, ghcr-cleanup
 ```
 
 ## Comandos
 
 ```bash
-npm install          # instala dependências
-npm run dev          # servidor dev com hot reload (nodemon)
-npm run migrate      # aplica migrations SQLite pendentes
-npm test             # testes unitários
-docker build .       # build da imagem Docker
+# Frontend
+cd frontend && npm install
+npm run build           # gera internal/server/web/dist/
+
+# Backend
+go build ./...          # compila todos os pacotes
+go build -o meetinglog ./cmd/meetinglog  # binário final
+go vet ./...
+
+# Docker
+docker build .          # imagem distroless ~20MB
+docker-compose up
+
+# Desenvolvimento local (requer frontend já buildado)
+APP_PIN=1234 DB_PATH=./data/meetinglog.sqlite FILES_PATH=./data/uploads go run ./cmd/meetinglog
 ```
 
 ## Estilo de Código
 
-- ES modules (`import`/`export`), async/await onde necessário
-- Sem TypeScript — ferramenta interna de uso único
-- Hono: validação de body com validadores embutidos
+- Go puro, sem TypeScript, sem CGO
+- `database/sql` + `modernc.org/sqlite` — API 100% síncrona
 - SQL: somente queries parametrizadas (sem interpolação de strings)
-- API SQLite é **síncrona** — handlers Hono são `async` apenas para `await c.req.json()`
+- Handlers são funções simples `func(w http.ResponseWriter, r *http.Request)` ou closures retornadas por `http.HandlerFunc`
+- Svelte 5: usar runes (`$state`, `$derived`, `$effect`, `$props`) em todos os componentes
 
 ## Padrões SQLite Importantes
 
 ### GROUP_CONCAT em subqueries derivados
 
-SQLite não expõe alias de tabela do subquery interno para o externo. A forma correta é referenciar a coluna pelo nome simples:
+SQLite não expõe alias de tabela do subquery interno para o externo:
 
 ```sql
--- ERRADO (p2.nome não existe no escopo externo)
-(SELECT GROUP_CONCAT(p2.nome, ', ') FROM (SELECT p2.nome FROM participante p2 ...))
-
 -- CORRETO
 (SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT p2.nome FROM participante p2 ...))
 ```
 
 ### Transações
 
-```js
-const result = db.transaction(() => {
-  const { lastInsertRowid } = db.prepare('INSERT INTO ...').run(...)
-  db.prepare('INSERT INTO ...').run(Number(lastInsertRowid), ...)
-  return Number(lastInsertRowid)
-})()
+```go
+func WithTx(db *sql.DB, fn func(*sql.Tx) error) error // em internal/store/tx.go
 ```
 
-### Backup online
+### Backup
 
-```js
-await db.backup('/tmp/backup.sqlite')  // consistente mesmo com WAL ativo
+```go
+store.BackupDB(db, dbDir)  // usa VACUUM INTO (não /tmp — distroless não tem /tmp)
 ```
 
 ### Restauração
 
-Após swap atômico do arquivo: `process.exit(0)` — o Docker reinicia automaticamente (restart: unless-stopped).
+`os.Rename` + `store.Open(newPath)` + `server.ReplaceDB(newDB)` — in-process sem reiniciar.
+
+### Detecção de UNIQUE constraint
+
+```go
+strings.Contains(err.Error(), "UNIQUE constraint failed")  // → ErrConflict
+```
+
+### Backfill Delta→HTML
+
+Executado automaticamente em `store.Open` na primeira inicialização. Converte notas Quill Delta JSON para HTML (TipTap). Idempotente — HTML não re-parseia como `{"ops":[...]}`.
 
 ### PDF em iframe
 
-O endpoint `/api/files/:id/content` serve PDFs com `X-Frame-Options: SAMEORIGIN` (exceção à regra global `DENY`) para permitir o visualizador `<iframe>` na mesma origem. Não usar `<embed>` — depreciado em Chrome moderno.
+`/api/files/{id}/content` usa middleware `FileContentCSP` que define `X-Frame-Options: SAMEORIGIN` e `frame-ancestors 'self'` para o viewer `<iframe>`. PDFs não têm thumbnail — retorna ícone PNG embutido.
 
 ## Variáveis de Ambiente
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `DB_PATH` | `/data/db/meetinglog.sqlite` | Caminho do arquivo SQLite |
 | `APP_PIN` | — | PIN de acesso (obrigatório) |
-| `APP_PORT` | `3000` | Porta HTTP |
+| `DB_PATH` | `/data/db/meetinglog.sqlite` | Caminho do arquivo SQLite |
 | `FILES_PATH` | — | Diretório de uploads |
-| `BASE_URL` | — | URL base pública para geração de links compartilhados |
+| `APP_PORT` | `3000` | Porta HTTP |
+| `BASE_URL` | — | URL base pública para links compartilhados |
+| `ML_SESSION_IDLE_MINUTES` | `43200` (30 dias) | Timeout de sessão |
+| `ML_MAX_FILE_MB` | `10` | Limite de upload |
+| `ML_MAX_RESTORE_MB` | `512` | Limite de restore |
+| `ML_TRUST_PROXY_HEADERS` | — | Confiar em X-Forwarded-For |
 
-## Entrypoint (docker-entrypoint.sh)
+## Autenticação
 
-1. Define `DB_PATH` padrão se não definido
-2. Cria diretório do DB como root e transfere para `appuser`
-3. Executa `src/migrate.js` (aplica migrations SQL pendentes)
-4. `exec su-exec appuser node src/server.js`
+- `POST /api/login {pin}` → cookie `meetinglog_session` (HttpOnly, 30 dias)
+- Todo `/api/*` protegido por `AuthRequired` exceto `/api/login`, `/healthz`, `/api/p/{token}*`
+- CSRF double-submit: cookie `meetinglog_csrf` + header `X-CSRF-Token`
+- Throttle: 5 falhas → lockout 30 min (por IP)
+- Links públicos read-only: `GET /api/p/{token}` e `GET /api/p/{token}/meetings`
+
+## Notas de Migração (Node → Go)
+
+- `migrations/*.sql` substituídas por `schema.sql` idempotente (um arquivo, tudo `IF NOT EXISTS`)
+- `docker-entrypoint.sh` + `su-exec` removidos — Go faz `os.MkdirAll` no startup
+- `better-sqlite3` (nativo) → `modernc.org/sqlite` (puro Go): mesmo dialeto SQL
+- `sharp` → `golang.org/x/image/draw.CatmullRom`
+- `poppler` removido → ícone PDF estático
+- `/data` deve ser gravável por UID 65532 (`distroless:nonroot`)

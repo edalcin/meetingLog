@@ -1,18 +1,17 @@
-version: '3.8'
 services:
   app:
-    build: .
-    ports:
-      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
-    environment:
-      - DB_PATH=${DB_PATH:-/data/db/meetinglog.sqlite}
-      - APP_PIN=${APP_PIN}
-      - APP_PORT=${APP_PORT:-3000}
-      - FILES_PATH=${FILES_PATH:-/data/uploads}
-    volumes:
-      - db_data:/data/db
-      - uploads_data:/data/uploads
+    image: ghcr.io/edalcin/meetinglog:stable
     restart: unless-stopped
-volumes:
-  db_data:
-  uploads_data:
+    ports:
+      - "3000:3000"
+    volumes:
+      - /mnt/user/appdata/meetinglog/db:/data/db
+      - /mnt/user/appdata/meetinglog/uploads:/data/uploads
+    environment:
+      APP_PIN: "change_me"
+      DB_PATH: /data/db/meetinglog.sqlite
+      FILES_PATH: /data/uploads
+      BASE_URL: "https://your-domain.example.com/"
+      APP_PORT: "3000"
+    # /data must be writable by UID 65532 (distroless nonroot)
+    # On UNRAID: chown -R 65532:65532 /mnt/user/appdata/meetinglog

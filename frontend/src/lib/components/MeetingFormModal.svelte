@@ -69,44 +69,46 @@
 
   // ── Init ─────────────────────────────────────────────────────────────────
   onMount(async () => {
-    const [parts, projs] = await Promise.all([
-      api.get('/api/participants?limit=500').catch(() => []),
-      api.get('/api/projects?limit=500').catch(() => []),
-    ])
+    // Fetch catalogs + (if editing) full meeting detail in parallel.
+    // List rows don't carry notas/pautas/links — must fetch the detail endpoint.
+    const fetches = [
+      api.get('/api/participants?limit=500').catch(() => ({ data: [] })),
+      api.get('/api/projects?limit=500').catch(() => ({ data: [] })),
+      meeting?.id ? api.get(`/api/meetings/${meeting.id}`) : Promise.resolve(null),
+    ]
+    const [parts, projs, detail] = await Promise.all(fetches)
     allParticipants = parts.data ?? []
     allProjects = projs.data ?? []
 
-    if (meeting) {
-      // Edit mode: pre-populate fields
-      dataHora = meeting.data_hora
-        ? toDatetimeLocal(meeting.data_hora)
-        : ''
-      tipo = meeting.tipo ?? 'Presencial'
-      notasHtml = meeting.notas ?? ''
+    const src = detail ?? meeting
+    if (src) {
+      dataHora = src.data_hora ? toDatetimeLocal(src.data_hora) : ''
+      tipo = src.tipo ?? 'Presencial'
+      notasHtml = src.notas ?? ''
 
-      // Participants: meeting may have participantes array or participante_ids
-      if (Array.isArray(meeting.participantes)) {
-        selectedParticipantIds = meeting.participantes.map(p => p.id)
-      } else if (Array.isArray(meeting.participante_ids)) {
-        selectedParticipantIds = [...meeting.participante_ids]
+      if (Array.isArray(src.participantes)) {
+        selectedParticipantIds = src.participantes.map(p => p.id)
+      } else if (Array.isArray(src.participante_ids)) {
+        selectedParticipantIds = [...src.participante_ids]
       }
 
-      // Projects
-      if (Array.isArray(meeting.projetos)) {
-        selectedProjectIds = meeting.projetos.map(p => p.id)
-      } else if (Array.isArray(meeting.projeto_ids)) {
-        selectedProjectIds = [...meeting.projeto_ids]
+      if (Array.isArray(src.projetos)) {
+        selectedProjectIds = src.projetos.map(p => p.id)
+      } else if (Array.isArray(src.projeto_ids)) {
+        selectedProjectIds = [...src.projeto_ids]
       }
 
-      // Pautas
-      if (Array.isArray(meeting.pautas)) {
-        pautas = meeting.pautas.map(p => ({ texto: p.texto ?? p }))
+      if (Array.isArray(src.pautas)) {
+        pautas = src.pautas.map(p => ({ texto: p.texto ?? p }))
       }
 
-      // Links
-      if (Array.isArray(meeting.links)) {
-        links = meeting.links.map(l => ({ nome: l.nome ?? '', url: l.url ?? '' }))
+      if (Array.isArray(src.links)) {
+        links = src.links.map(l => ({ nome: l.nome ?? '', url: l.url ?? '' }))
       }
+
+      // TipTap initializes with content at mount time (empty string).
+      // Call setContent explicitly to load the fetched HTML into the editor.
+      editorRef?.setContent(notasHtml)
     }
   })
 

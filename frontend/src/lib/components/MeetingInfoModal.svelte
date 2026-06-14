@@ -278,11 +278,12 @@
           {:else}
             <div class="space-y-2 mb-4">
               {#each files as file}
-                {@const badge = fileLetterBadge(file.nome_original ?? file.filename)}
+                {@const badge = fileLetterBadge(file.filename_original)}
+                {@const hasThumbnail = file.mime_type === 'image/png' || file.mime_type === 'image/jpeg'}
                 <div class="flex items-center gap-3 p-2 bg-gray-50 border border-gray-200 rounded-lg">
                   <!-- Thumbnail or letter badge -->
                   <div class="w-12 h-12 shrink-0 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
-                    {#if file.has_thumbnail}
+                    {#if hasThumbnail}
                       <img
                         src="/api/files/{file.id}/thumbnail"
                         alt="miniatura"
@@ -294,8 +295,8 @@
                   </div>
 
                   <!-- Filename -->
-                  <span class="flex-1 text-sm text-gray-800 truncate" title={file.nome_original ?? file.filename}>
-                    {file.nome_original ?? file.filename}
+                  <span class="flex-1 text-sm text-gray-800 truncate" title={file.filename_original}>
+                    {file.filename_original}
                   </span>
 
                   <!-- Actions -->

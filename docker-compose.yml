@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/edalcin/meetinglog:stable
+    image: ghcr.io/edalcin/meetinglog:latest
     restart: unless-stopped
     ports:
       - "3000:3000"

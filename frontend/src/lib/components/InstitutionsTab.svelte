@@ -62,7 +62,7 @@
     error = ''
     try {
       const data = await api.get('/api/institutions?limit=500')
-      allInstitutions = data.items ?? data
+      allInstitutions = data.data ?? []
     } catch (e) {
       error = e.message
     } finally {

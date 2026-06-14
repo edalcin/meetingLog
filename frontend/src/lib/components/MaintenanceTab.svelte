@@ -36,7 +36,7 @@
   onMount(async () => {
     try {
       const data = await api.get('/api/projects?limit=500')
-      allProjects = Array.isArray(data) ? data : (data.items ?? [])
+      allProjects = data.data ?? []
     } catch (e) {
       replaceError = e.message
     }

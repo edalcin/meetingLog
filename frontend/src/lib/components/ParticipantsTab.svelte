@@ -76,7 +76,7 @@
     error = ''
     try {
       const data = await api.get('/api/participants?limit=500')
-      allParticipants = data.items ?? data
+      allParticipants = data.data ?? []
     } catch (e) {
       error = e.message
     } finally {
@@ -86,7 +86,7 @@
 
   async function loadInstitutions() {
     const insts = await api.get('/api/institutions?limit=500').catch(() => [])
-    allInstitutions = insts.items ?? insts
+    allInstitutions = insts.data ?? []
   }
 
   onMount(async () => {
@@ -94,8 +94,8 @@
       api.get('/api/participants?limit=500').catch(() => []),
       api.get('/api/institutions?limit=500').catch(() => []),
     ])
-    allParticipants = parts.items ?? parts
-    allInstitutions = insts.items ?? insts
+    allParticipants = parts.data ?? []
+    allInstitutions = insts.data ?? []
     loading = false
   })
 

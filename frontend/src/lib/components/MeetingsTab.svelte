@@ -60,8 +60,8 @@
       if (selectedParticipantIds.length) params.set('part_ids', selectedParticipantIds.join(','))
       if (selectedProjectIds.length) params.set('proj_ids', selectedProjectIds.join(','))
       const data = await api.get(`/api/meetings?${params}`)
-      meetings = data.items ?? data
-      totalCount = data.total ?? data.length
+      meetings = data.data ?? []
+      totalCount = data.total ?? 0
     } catch (e) {
       error = e.message
     } finally {
@@ -74,8 +74,8 @@
       api.get('/api/participants?limit=1000').catch(() => []),
       api.get('/api/projects?limit=1000').catch(() => []),
     ])
-    allParticipants = parts.items ?? parts
-    allProjects = projs.items ?? projs
+    allParticipants = parts.data ?? []
+    allProjects = projs.data ?? []
     await load()
   })
 

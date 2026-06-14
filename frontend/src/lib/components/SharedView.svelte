@@ -33,7 +33,8 @@
         return
       }
 
-      meetings = await api.get(`/api/p/${token}/meetings`)
+      const md = await api.get(`/api/p/${token}/meetings`)
+      meetings = md.data ?? md ?? []
     } catch (e) {
       error = e.message
     } finally {

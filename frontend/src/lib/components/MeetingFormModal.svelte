@@ -73,8 +73,8 @@
       api.get('/api/participants?limit=500').catch(() => []),
       api.get('/api/projects?limit=500').catch(() => []),
     ])
-    allParticipants = parts.items ?? parts
-    allProjects = projs.items ?? projs
+    allParticipants = parts.data ?? []
+    allProjects = projs.data ?? []
 
     if (meeting) {
       // Edit mode: pre-populate fields

@@ -11,7 +11,7 @@ type healthHandler struct {
 }
 
 func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := h.db.QueryRow("SELECT 1").Err(); err != nil {
+	if err := h.db.PingContext(r.Context()); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})

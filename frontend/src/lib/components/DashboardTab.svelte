@@ -36,7 +36,7 @@
 
   let loading = $state(false)
   let error = $state('')
-  let filterType = $state('todos')
+  let filterType = $state('all')
   let filterValue = $state('')
 
   let options = $state({ anos: [], projetos: [], participantes: [] })
@@ -283,27 +283,27 @@
       class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       bind:value={filterType}
     >
-      <option value="todos">Todos os dados</option>
-      <option value="ano">Por Ano</option>
-      <option value="projeto">Por Projeto</option>
-      <option value="participante">Por Participante</option>
+      <option value="all">Todos os dados</option>
+      <option value="year">Por Ano</option>
+      <option value="project">Por Projeto</option>
+      <option value="participant">Por Participante</option>
     </select>
 
-    {#if filterType !== 'todos'}
+    {#if filterType !== 'all'}
       <select
         class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         bind:value={filterValue}
       >
         <option value="">Selecione...</option>
-        {#if filterType === 'ano'}
+        {#if filterType === 'year'}
           {#each options.anos as ano}
             <option value={ano}>{ano}</option>
           {/each}
-        {:else if filterType === 'projeto'}
+        {:else if filterType === 'project'}
           {#each options.projetos as p}
             <option value={String(p.id)}>{p.nome}</option>
           {/each}
-        {:else if filterType === 'participante'}
+        {:else if filterType === 'participant'}
           {#each options.participantes as p}
             <option value={String(p.id)}>{p.nome}</option>
           {/each}

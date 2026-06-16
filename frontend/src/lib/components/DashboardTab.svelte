@@ -36,15 +36,16 @@
   let options = $state({ anos: [], projetos: [], participantes: [] })
   let dashData = $state(null)
 
-  // Canvas refs — must be $state so $effect reacts when {#if dashData} mounts them
-  let canvasPorMes = $state()
-  let canvasTopParticipantes = $state()
-  let canvasTopProjetos = $state()
-  let canvasHorasFreq = $state()
-  let canvasDiasFreq = $state()
-  let canvasProjetosStack = $state()
-  let canvasTopProjetosPizza = $state()
-  let canvasTopParticipantesPizza = $state()
+  // Canvas refs — plain let because canvases are always in the DOM (outside {#if})
+  // bind:this sets these at mount, before any effects fire
+  let canvasPorMes
+  let canvasTopParticipantes
+  let canvasTopProjetos
+  let canvasHorasFreq
+  let canvasDiasFreq
+  let canvasProjetosStack
+  let canvasTopProjetosPizza
+  let canvasTopParticipantesPizza
 
   // Chart instances (imperative, not reactive)
   let chartPorMes
@@ -169,20 +170,9 @@
     chartProjetosStack?.destroy()
     chartTopProjetosPizza?.destroy()
     chartTopParticipantesPizza?.destroy()
+    chartPorMes = chartTopParticipantes = chartTopProjetos = chartHorasFreq =
+      chartDiasFreq = chartProjetosStack = chartTopProjetosPizza = chartTopParticipantesPizza = null
   }
-
-  // Reset filterValue whenever filterType changes
-  $effect(() => {
-    filterType
-    filterValue = ''
-  })
-
-  // Reload dashboard data when filters change
-  $effect(() => {
-    const ft = filterType
-    const fv = filterValue
-    loadDashboard()
-  })
 
   function updateCharts() {
     if (!dashData || !chartPorMes) return
@@ -248,16 +238,32 @@
     chartTopParticipantesPizza.update()
   }
 
-  // Create charts when canvas refs become available (mounted by {#if dashData}),
-  // then update with current data. Re-runs when dashData changes too.
+  // Reset filterValue whenever filterType changes
   $effect(() => {
-    if (!canvasPorMes || !dashData) return
-    if (!chartPorMes) createCharts()
+    filterType
+    filterValue = ''
+  })
+
+  // Reload dashboard data when filters change
+  $effect(() => {
+    const ft = filterType
+    const fv = filterValue
+    loadDashboard()
+  })
+
+  // Update charts when data changes (charts created in onMount, not here)
+  $effect(() => {
+    if (!dashData || !chartPorMes) return
     updateCharts()
   })
 
-  onMount(async () => {
-    await loadOptions()
+  onMount(() => {
+    // Canvases are always in the DOM — create charts synchronously at mount.
+    // No await before this: avoids the race where dashData arrives before charts exist.
+    createCharts()
+    loadOptions()
+    // Edge case: if dashData already arrived (instant server), update now
+    if (dashData) updateCharts()
   })
 
   onDestroy(() => {
@@ -313,8 +319,8 @@
     </div>
   {/if}
 
+  <!-- Stats cards — only when data is available -->
   {#if dashData}
-    <!-- Stats cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
       <!-- Total reuniões -->
@@ -360,51 +366,52 @@
       </div>
 
     </div>
-
-    <!-- Charts grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-      <!-- 1. Reuniões por Mês — full width -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2">
-        <canvas bind:this={canvasPorMes}></canvas>
-      </div>
-
-      <!-- 2. Top Participantes -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <canvas bind:this={canvasTopParticipantes}></canvas>
-      </div>
-
-      <!-- 3. Top Projetos -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <canvas bind:this={canvasTopProjetos}></canvas>
-      </div>
-
-      <!-- 4. Horários -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <canvas bind:this={canvasHorasFreq}></canvas>
-      </div>
-
-      <!-- 5. Dias da Semana -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <canvas bind:this={canvasDiasFreq}></canvas>
-      </div>
-
-      <!-- 6. Projetos por Período — full width -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2">
-        <canvas bind:this={canvasProjetosStack}></canvas>
-      </div>
-
-      <!-- 7. Top Projetos Pizza -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <canvas bind:this={canvasTopProjetosPizza}></canvas>
-      </div>
-
-      <!-- 8. Top Participantes Pizza -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <canvas bind:this={canvasTopParticipantesPizza}></canvas>
-      </div>
-
-    </div>
   {/if}
+
+  <!-- Charts grid — always in DOM so bind:this works at mount.
+       Hidden until data loads; Chart.js ResizeObserver handles resize on reveal. -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" class:hidden={!dashData}>
+
+    <!-- 1. Reuniões por Mês — full width -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2">
+      <canvas bind:this={canvasPorMes}></canvas>
+    </div>
+
+    <!-- 2. Top Participantes -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <canvas bind:this={canvasTopParticipantes}></canvas>
+    </div>
+
+    <!-- 3. Top Projetos -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <canvas bind:this={canvasTopProjetos}></canvas>
+    </div>
+
+    <!-- 4. Horários -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <canvas bind:this={canvasHorasFreq}></canvas>
+    </div>
+
+    <!-- 5. Dias da Semana -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <canvas bind:this={canvasDiasFreq}></canvas>
+    </div>
+
+    <!-- 6. Projetos por Período — full width -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2">
+      <canvas bind:this={canvasProjetosStack}></canvas>
+    </div>
+
+    <!-- 7. Top Projetos Pizza -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <canvas bind:this={canvasTopProjetosPizza}></canvas>
+    </div>
+
+    <!-- 8. Top Participantes Pizza -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <canvas bind:this={canvasTopParticipantesPizza}></canvas>
+    </div>
+
+  </div>
 
 </div>

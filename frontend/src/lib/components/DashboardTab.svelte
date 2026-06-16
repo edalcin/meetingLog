@@ -40,7 +40,9 @@
   let filterValue = $state('')
 
   let options = $state({ anos: [], projetos: [], participantes: [] })
-  let dashData = $state(null)
+  // $state.raw: Chart.js calls Object.defineProperty on received arrays/objects.
+  // Deep-proxied $state throws state_descriptors_fixed when Chart.js touches them.
+  let dashData = $state.raw(null)
 
   // Canvas refs — plain let because canvases are always in the DOM (outside {#if})
   // bind:this sets these at mount, before any effects fire

@@ -3,6 +3,9 @@
   import { api } from '../api.js'
   import {
     Chart,
+    LineController,
+    BarController,
+    DoughnutController,
     CategoryScale,
     LinearScale,
     BarElement,
@@ -16,6 +19,9 @@
   } from 'chart.js'
 
   Chart.register(
+    LineController,
+    BarController,
+    DoughnutController,
     CategoryScale,
     LinearScale,
     BarElement,

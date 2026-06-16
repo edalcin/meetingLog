@@ -5,7 +5,7 @@
   import Link from '@tiptap/extension-link'
   import Placeholder from '@tiptap/extension-placeholder'
 
-  let { content = $bindable(''), editable = true, placeholder = 'Digite aqui...' } = $props()
+  let { content = $bindable(''), editable = true, placeholder = 'Digite aqui...', fill = false } = $props()
 
   let element = $state(null)
   let editor = $state(null)
@@ -50,7 +50,7 @@
   export function setContent(html) { editor?.commands.setContent(html) }
 </script>
 
-<div class="border border-gray-300 rounded-lg overflow-hidden bg-white">
+<div class="border border-gray-300 rounded-lg overflow-hidden bg-white {fill ? 'flex flex-col flex-1 min-h-0' : ''}">
   {#if editable}
     <div class="flex gap-1 p-2 border-b border-gray-200 flex-wrap bg-gray-50">
       <button type="button"
@@ -78,5 +78,5 @@
         class="px-2 py-1 text-xs rounded hover:bg-gray-200 transition-colors {isOrdered ? 'bg-gray-200' : ''}">1. Lista</button>
     </div>
   {/if}
-  <div bind:this={element} class="{editable ? 'p-3' : 'prose-viewer p-0'} min-h-[80px]"></div>
+  <div bind:this={element} class="{editable ? 'p-3' : 'prose-viewer p-0'} {fill ? 'flex-1 overflow-y-auto min-h-0' : 'min-h-[80px]'}"></div>
 </div>

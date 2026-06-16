@@ -301,7 +301,7 @@
 
     <!-- Body -->
     <form onsubmit={handleSubmit} class="flex flex-col flex-1 overflow-hidden">
-      <div class="flex-1 overflow-y-auto px-6 py-5">
+      <div class="flex flex-col flex-1 overflow-hidden px-6 py-5">
 
         <!-- Rejected URLs warning -->
         {#if rejectedUrls.length > 0}
@@ -316,10 +316,10 @@
         {/if}
 
         <!-- Two-column grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
 
           <!-- LEFT COLUMN -->
-          <div class="space-y-5">
+          <div class="flex flex-col gap-5 overflow-y-auto pr-1">
 
             <!-- Data/Hora -->
             <div>
@@ -437,7 +437,7 @@
           </div>
 
           <!-- RIGHT COLUMN -->
-          <div class="space-y-5">
+          <div class="flex flex-col gap-5 min-h-0">
 
             <!-- Participantes -->
             <div>
@@ -553,12 +553,13 @@
             </div>
 
             <!-- Notas -->
-            <div class="flex-1">
+            <div class="flex flex-col flex-1 min-h-0">
               <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
               <RichEditor
                 bind:this={editorRef}
                 bind:content={notasHtml}
                 editable={true}
+                fill={true}
                 placeholder="Anotações da reunião..."
               />
               {#if editingId}

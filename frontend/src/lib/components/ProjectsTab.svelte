@@ -148,7 +148,7 @@
     showFormModal = true
   }
 
-  function openEdit(p) {
+  async function openEdit(p) {
     editingProject = p
     fNome = p.nome ?? ''
     fAtivo = p.ativo ?? true
@@ -160,6 +160,15 @@
     fDeactivated = []
     fRejectedUrls = []
     showFormModal = true
+
+    // List items don't carry links/notas — fetch full detail
+    if (!p.links) {
+      try {
+        const detail = await api.get(`/api/projects/${p.id}/detail`)
+        fNotas = detail.notas ?? ''
+        fLinks = detail.links ? detail.links.map(l => ({ nome: l.nome ?? '', url: l.url ?? '' })) : []
+      } catch (_) { /* non-fatal */ }
+    }
   }
 
   async function openInfo(id) {

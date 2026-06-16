@@ -36,17 +36,17 @@
   let options = $state({ anos: [], projetos: [], participantes: [] })
   let dashData = $state(null)
 
-  // Canvas refs
-  let canvasPorMes
-  let canvasTopParticipantes
-  let canvasTopProjetos
-  let canvasHorasFreq
-  let canvasDiasFreq
-  let canvasProjetosStack
-  let canvasTopProjetosPizza
-  let canvasTopParticipantesPizza
+  // Canvas refs — must be $state so $effect reacts when {#if dashData} mounts them
+  let canvasPorMes = $state()
+  let canvasTopParticipantes = $state()
+  let canvasTopProjetos = $state()
+  let canvasHorasFreq = $state()
+  let canvasDiasFreq = $state()
+  let canvasProjetosStack = $state()
+  let canvasTopProjetosPizza = $state()
+  let canvasTopParticipantesPizza = $state()
 
-  // Chart instances
+  // Chart instances (imperative, not reactive)
   let chartPorMes
   let chartTopParticipantes
   let chartTopProjetos
@@ -184,10 +184,8 @@
     loadDashboard()
   })
 
-  // Update charts when dashData changes
-  $effect(() => {
-    if (!dashData) return
-    if (!chartPorMes) return
+  function updateCharts() {
+    if (!dashData || !chartPorMes) return
 
     chartPorMes.data.labels = dashData.porMes.labels
     chartPorMes.data.datasets = [
@@ -248,11 +246,18 @@
       { data: dashData.topParticipantesPizza.data, backgroundColor: PIZZA_COLORS }
     ]
     chartTopParticipantesPizza.update()
+  }
+
+  // Create charts when canvas refs become available (mounted by {#if dashData}),
+  // then update with current data. Re-runs when dashData changes too.
+  $effect(() => {
+    if (!canvasPorMes || !dashData) return
+    if (!chartPorMes) createCharts()
+    updateCharts()
   })
 
   onMount(async () => {
     await loadOptions()
-    createCharts()
   })
 
   onDestroy(() => {

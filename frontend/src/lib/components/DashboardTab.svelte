@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
   import { api } from '../api.js'
   import {
     Chart,
@@ -77,6 +77,11 @@
     try {
       const params = new URLSearchParams({ filter: filterType, value: filterValue })
       dashData = await api.get('/api/dashboard?' + params.toString())
+      // tick() waits for Svelte to flush DOM updates (e.g. the {#if dashData}
+      // stats block re-renders). After tick, canvas elements are in DOM and
+      // laid out, so Chart.js gets real dimensions.
+      await tick()
+      if (chartPorMes) updateCharts()
     } catch (e) {
       error = 'Erro ao carregar dados do dashboard: ' + e.message
     } finally {
@@ -251,19 +256,10 @@
     loadDashboard()
   })
 
-  // Update charts when data changes (charts created in onMount, not here)
-  $effect(() => {
-    if (!dashData || !chartPorMes) return
-    updateCharts()
-  })
-
   onMount(() => {
-    // Canvases are always in the DOM — create charts synchronously at mount.
-    // No await before this: avoids the race where dashData arrives before charts exist.
+    // Canvases are always in the DOM with min-height — real dimensions at this point.
     createCharts()
     loadOptions()
-    // Edge case: if dashData already arrived (instant server), update now
-    if (dashData) updateCharts()
   })
 
   onDestroy(() => {
@@ -368,47 +364,48 @@
     </div>
   {/if}
 
-  <!-- Charts grid — always in DOM so bind:this works at mount.
-       Hidden until data loads; Chart.js ResizeObserver handles resize on reveal. -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" class:hidden={!dashData}>
+  <!-- Charts grid — always in DOM so canvas refs are ready at onMount.
+       Containers have explicit min-height so Chart.js gets real dimensions
+       when createCharts() runs, even before the browser finishes layout. -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" class:invisible={!dashData}>
 
     <!-- 1. Reuniões por Mês — full width -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2" style="min-height:260px">
       <canvas bind:this={canvasPorMes}></canvas>
     </div>
 
     <!-- 2. Top Participantes -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4" style="min-height:260px">
       <canvas bind:this={canvasTopParticipantes}></canvas>
     </div>
 
     <!-- 3. Top Projetos -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4" style="min-height:260px">
       <canvas bind:this={canvasTopProjetos}></canvas>
     </div>
 
     <!-- 4. Horários -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4" style="min-height:260px">
       <canvas bind:this={canvasHorasFreq}></canvas>
     </div>
 
     <!-- 5. Dias da Semana -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4" style="min-height:260px">
       <canvas bind:this={canvasDiasFreq}></canvas>
     </div>
 
     <!-- 6. Projetos por Período — full width -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 md:col-span-2" style="min-height:260px">
       <canvas bind:this={canvasProjetosStack}></canvas>
     </div>
 
     <!-- 7. Top Projetos Pizza -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4" style="min-height:260px">
       <canvas bind:this={canvasTopProjetosPizza}></canvas>
     </div>
 
     <!-- 8. Top Participantes Pizza -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4" style="min-height:260px">
       <canvas bind:this={canvasTopParticipantesPizza}></canvas>
     </div>
 

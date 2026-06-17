@@ -236,7 +236,7 @@
         notas,
         participante_ids: selectedParticipantIds,
         projeto_ids: selectedProjectIds,
-        pautas: pautas.map((p, i) => ({ texto: p.texto, ordem: i + 1 })),
+        pautas: pautas.map(p => p.texto),
         links: links
           .filter(l => l.url.trim())
           .map((l, i) => ({ nome: l.nome.trim() || null, url: l.url.trim(), ordem: i + 1 })),

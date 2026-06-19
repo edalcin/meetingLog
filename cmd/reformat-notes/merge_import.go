@@ -59,6 +59,13 @@ func main() {
 	defer db.Close()
 	db.SetMaxOpenConns(1)
 
+	// Force DELETE journal mode so the result is a clean, WAL-free single file.
+	// Without this, modernc.org/sqlite inherits WAL from the source DB and the
+	// resulting file may be unreadable on a different OS/filesystem.
+	if _, err := db.Exec("PRAGMA journal_mode = DELETE"); err != nil {
+		log.Fatalf("PRAGMA journal_mode: %v", err)
+	}
+
 	allowed := map[string]bool{"reuniao": true, "projeto": true, "participante": true}
 	updated, skipped, failed := 0, 0, 0
 	for _, n := range all {

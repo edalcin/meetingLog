@@ -1,18 +1,33 @@
 # Registro de Reuniões
 
-Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva. Roda em um único container Docker com banco de dados SQLite embutido — sem dependências externas.
+Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva. Roda em um único container Docker (~20 MB) com banco de dados SQLite embutido — sem dependências externas.
 
 ## Funcionalidades
 
-- Listagem, registro e edição de reuniões
-- Participantes por instituição, com cargo e lotação
-- Projetos vinculados às reuniões e às instituições
-- Pautas e links por reunião
-- Notas ricas por reunião e por projeto (editor Quill)
-- Gestão de arquivos anexados por reunião
-- Backup e restauração do banco de dados pela própria interface
-- Autenticação via PIN
-- PWA — instalável em dispositivos móveis
+- **Reuniões** — listagem com rolagem infinita, ordenação por colunas, filtros por participante e projeto, notas ricas, pautas e links
+- **Participantes** — cadastro com instituição, cargo, lotação, e-mail, status ativo/inativo, notas
+- **Projetos** — vínculo com instituições e participantes, links, notas, status ativo/inativo
+- **Instituições** — cadastro de sigla e nome
+- **Arquivos** — upload de imagens (PNG/JPEG) e PDFs por reunião; visualização em modal (sem abrir nova aba); thumbnails automáticos
+- **Dashboard** — gráficos de reuniões por mês, top participantes, top projetos, horários e dias da semana, filtros por ano/projeto/participante com filtro de status (ativos/inativos)
+- **Links compartilháveis** — URLs públicas read-only por reunião ou filtro
+- **Backup e restauração** — download/upload do `.sqlite` pela própria interface
+- **Autenticação via PIN** — sessão server-side, throttle de 5 tentativas, lockout de 30 min
+- **PWA** — instalável em dispositivos móveis
+
+## Stack Tecnológico
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Runtime | Go 1.25 — binário estático, `CGO_ENABLED=0` |
+| HTTP | [chi v5](https://github.com/go-chi/chi) |
+| Banco de dados | SQLite via [`modernc.org/sqlite`](https://gitlab.com/cznic/sqlite) (puro Go, WAL mode) |
+| Frontend | [Svelte 5](https://svelte.dev) + [Vite](https://vitejs.dev) + [Tailwind CSS](https://tailwindcss.com) |
+| Editor de texto | [TipTap](https://tiptap.dev) (baseado em ProseMirror) |
+| Gráficos | [Chart.js](https://www.chartjs.org) |
+| Thumbnails | `golang.org/x/image/draw` (CatmullRom) — sem CGO, sem sharp |
+| Docker | 3 estágios: `node:22-alpine` → `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
+| Imagem final | ~20 MB, usuário não-root (UID 65532) |
 
 ## Quick Start com Docker
 
@@ -23,7 +38,8 @@ docker run -d \
   -p 3000:3000 \
   -e APP_PIN=seu-pin \
   -e DB_PATH=/data/db/meetinglog.sqlite \
-  -v /caminho/local/db:/data/db \
+  -e FILES_PATH=/data/uploads \
+  -v /caminho/local/data:/data \
   ghcr.io/edalcin/meetinglog:latest
 ```
 
@@ -34,27 +50,61 @@ Acesse: `http://localhost:3000`
 | Variável | Obrigatória | Padrão | Descrição |
 |----------|-------------|--------|-----------|
 | `APP_PIN` | Sim | — | PIN de acesso à aplicação |
-| `DB_PATH` | Não | `/data/db/meetinglog.sqlite` | Caminho do arquivo SQLite dentro do container |
-| `FILES_PATH` | Não | — | Diretório para upload de arquivos dentro do container |
-| `APP_PORT` | Não | `3000` | Porta HTTP do container |
+| `DB_PATH` | Não | `/data/db/meetinglog.sqlite` | Caminho do arquivo SQLite |
+| `FILES_PATH` | Não | — | Diretório para uploads |
+| `APP_PORT` | Não | `3000` | Porta HTTP |
+| `BASE_URL` | Não | — | URL base pública para links compartilháveis |
+| `ML_SESSION_IDLE_MINUTES` | Não | `43200` (30 dias) | Timeout de sessão |
+| `ML_MAX_FILE_MB` | Não | `10` | Limite por upload em MB |
+| `ML_MAX_RESTORE_MB` | Não | `512` | Limite para restauração de backup em MB |
+| `ML_TRUST_PROXY_HEADERS` | Não | — | Confiar em `X-Forwarded-For` (reverse proxy) |
+
+## Desenvolvimento
+
+### Pré-requisitos
+
+- Go 1.25+
+- Node.js 22+
+
+### Comandos
+
+```bash
+# Frontend (Svelte 5 + Vite)
+cd frontend
+npm install
+npm run build          # gera internal/server/web/dist/
+npm run dev            # servidor Vite com HMR (frontend isolado)
+
+# Backend (Go)
+go build ./...         # compila todos os pacotes
+go vet ./...           # verificação estática
+go build -o meetinglog ./cmd/meetinglog  # binário final
+
+# Executar localmente (requer frontend buildado primeiro)
+APP_PIN=1234 DB_PATH=./data/meetinglog.sqlite FILES_PATH=./data/uploads \
+  go run ./cmd/meetinglog
+
+# Docker
+docker build .
+docker-compose up
+```
 
 ## Backup e Restauração
 
 Na seção **Manutenção** da interface:
 
-- **Backup** — baixa o arquivo `.sqlite` completo com todos os dados
-- **Restaurar** — sobe um arquivo `.sqlite`; o servidor reinicia automaticamente após a restauração
-
-## Desenvolvimento
-
-```bash
-npm install       # instala dependências
-npm run dev       # inicia com hot reload (nodemon)
-npm run migrate   # aplica migrations SQLite pendentes
-npm test          # executa testes
-docker build .    # constrói a imagem Docker
-```
+- **Backup** — baixa o arquivo `.sqlite` completo (usa `VACUUM INTO`)
+- **Restaurar** — sobe um arquivo `.sqlite`; a troca é feita em memória sem reiniciar o servidor
 
 ## Instalação no UNRAID
 
 Consulte [docs/unraid-install.md](docs/unraid-install.md) para instruções detalhadas.
+
+## Segurança
+
+- Sessões server-side armazenadas no SQLite (não em JWT ou cookies com dados)
+- CSRF double-submit: cookie `meetinglog_csrf` + header `X-CSRF-Token`
+- Throttle de login: 5 falhas → lockout de 30 min por IP
+- Uploads sanitizados: apenas PNG, JPEG e PDF aceitos; PDFs servidos com `X-Frame-Options: SAMEORIGIN`
+- Container distroless, usuário não-root (UID 65532)
+- SQL 100% parametrizado — sem interpolação de strings

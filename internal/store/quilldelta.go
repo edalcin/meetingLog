@@ -16,6 +16,14 @@ type quillDelta struct {
 	Ops []quillOp `json:"ops"`
 }
 
+// IsDelta reports whether s looks like a Quill Delta JSON string.
+// Exported for use by migration tools.
+func IsDelta(s string) bool { return isDelta(s) }
+
+// DeltaToHTML converts a Quill Delta JSON string to TipTap-compatible HTML.
+// Exported for use by migration tools.
+func DeltaToHTML(s string) (string, error) { return deltaToHTML(s) }
+
 // isDelta reports whether s looks like a Quill Delta JSON string.
 // Idempotent check: converted HTML will not re-parse as a delta.
 func isDelta(s string) bool {

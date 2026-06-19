@@ -89,6 +89,7 @@ func ListMeetings(db *sql.DB, partIDs []int64, projIDs []int64, sort, order stri
 	if !allowedMeetingSort[sort] {
 		sort = "data_hora"
 	}
+	order = strings.ToUpper(order)
 	if order != "ASC" && order != "DESC" {
 		order = "DESC"
 	}

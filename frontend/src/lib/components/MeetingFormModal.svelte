@@ -6,7 +6,8 @@
   let { meeting = null, onClose, onSaved } = $props()
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  let editingId = $derived(meeting?.id ?? null)
+  // $state (not $derived) so handleSubmit can flip to edit-mode after create.
+  let editingId = $state(meeting?.id ?? null)
 
   // ── Form fields ──────────────────────────────────────────────────────────
   let dataHora = $state('')
@@ -36,6 +37,11 @@
   let saving = $state(false)
   let error = $state('')
   let rejectedUrls = $state([])
+
+  // Files — pending upload
+  let pendingFiles = $state([])
+  let fileInputRef = $state(null)
+  let fileError = $state('')
 
   // RichEditor ref
   let editorRef = $state(null)
@@ -206,6 +212,17 @@
     links = links.filter((_, idx) => idx !== i)
   }
 
+  // ── Files ─────────────────────────────────────────────────────────────────
+  function handleFileSelect() {
+    if (!fileInputRef?.files?.length) return
+    pendingFiles = [...pendingFiles, ...Array.from(fileInputRef.files)]
+    fileInputRef.value = ''
+  }
+
+  function removePendingFile(i) {
+    pendingFiles = pendingFiles.filter((_, idx) => idx !== i)
+  }
+
   // ── Validation ────────────────────────────────────────────────────────────
   function validate() {
     if (!dataHora) return 'Data/Hora é obrigatória.'
@@ -221,6 +238,7 @@
   async function handleSubmit(e) {
     e.preventDefault()
     error = ''
+    fileError = ''
     rejectedUrls = []
 
     const validationError = validate()
@@ -247,10 +265,32 @@
         result = await api.put(`/api/meetings/${editingId}`, payload)
       } else {
         result = await api.post('/api/meetings', payload)
+        // Pin the new ID so a retry uploads files without duplicating the meeting.
+        editingId = result?.id ?? null
       }
 
       if (result?.rejected_urls?.length) {
         rejectedUrls = result.rejected_urls
+      }
+
+      // Upload pending files one-by-one (backend accepts one per request).
+      if (pendingFiles.length > 0 && editingId) {
+        const failed = []
+        for (const f of pendingFiles) {
+          const fd = new FormData()
+          fd.append('file', f)
+          try {
+            await api.upload(`/api/meetings/${editingId}/files`, fd)
+          } catch {
+            failed.push(f)
+          }
+        }
+        pendingFiles = failed
+        if (failed.length > 0) {
+          fileError = `${failed.length} arquivo(s) não enviado(s). Verifique e tente novamente.`
+          saving = false
+          return  // Keep dialog open for retry (meeting already saved).
+        }
       }
 
       onSaved?.()
@@ -432,6 +472,53 @@
               >
                 + Adicionar link
               </button>
+            </div>
+
+            <!-- Arquivos -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Arquivos</label>
+
+              <!-- Pending files list -->
+              {#if pendingFiles.length > 0}
+                <div class="space-y-1 mb-2">
+                  {#each pendingFiles as file, i}
+                    <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5">
+                      <span class="text-xs font-medium text-gray-500 uppercase w-10 shrink-0">
+                        {file.name.split('.').pop()}
+                      </span>
+                      <span class="flex-1 text-sm text-gray-800 truncate" title={file.name}>{file.name}</span>
+                      <button
+                        type="button"
+                        onclick={() => removePendingFile(i)}
+                        title="Remover"
+                        class="p-0.5 text-gray-400 hover:text-red-600 rounded shrink-0"
+                      >×</button>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
+              <!-- Hidden file input -->
+              <input
+                type="file"
+                bind:this={fileInputRef}
+                accept="image/png,image/jpeg,application/pdf"
+                multiple
+                class="hidden"
+                onchange={handleFileSelect}
+              />
+
+              <button
+                type="button"
+                onclick={() => fileInputRef?.click()}
+                class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                + Adicionar arquivo(s)
+              </button>
+
+              {#if fileError}
+                <p class="mt-1 text-xs text-red-600">{fileError}</p>
+              {/if}
             </div>
 
           </div>

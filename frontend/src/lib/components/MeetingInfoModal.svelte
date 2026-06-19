@@ -82,11 +82,11 @@
     uploadError = ''
     uploading = true
     try {
-      const fd = new FormData()
       for (const f of fileInput.files) {
+        const fd = new FormData()
         fd.append('file', f)
+        await api.upload(`/api/meetings/${meetingId}/files`, fd)
       }
-      await api.upload(`/api/meetings/${meetingId}/files`, fd)
       fileInput.value = ''
       await loadFiles()
     } catch (e) {

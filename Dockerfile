@@ -20,7 +20,7 @@ ENV CGO_ENABLED=0 GOOS=linux
 RUN go build -trimpath -ldflags='-s -w' -o /out/meetinglog ./cmd/meetinglog
 
 # Stage 3: Minimal distroless image
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12
 COPY --from=builder /out/meetinglog /meetinglog
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

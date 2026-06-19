@@ -37,7 +37,7 @@ func GetDashboardOptions(db *sql.DB) (*model.DashboardOptions, error) {
 	}
 	anosRows.Close()
 
-	projetoRows, err := db.Query(`SELECT id, nome FROM projeto ORDER BY nome ASC`)
+	projetoRows, err := db.Query(`SELECT id, nome, ativo FROM projeto ORDER BY nome ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("GetDashboardOptions projetos: %w", err)
 	}
@@ -45,14 +45,14 @@ func GetDashboardOptions(db *sql.DB) (*model.DashboardOptions, error) {
 	var projetos []model.ParticipantSummary
 	for projetoRows.Next() {
 		var ps model.ParticipantSummary
-		if err := projetoRows.Scan(&ps.ID, &ps.Nome); err != nil {
+		if err := projetoRows.Scan(&ps.ID, &ps.Nome, &ps.Ativo); err != nil {
 			return nil, fmt.Errorf("GetDashboardOptions projeto scan: %w", err)
 		}
 		projetos = append(projetos, ps)
 	}
 	projetoRows.Close()
 
-	partRows, err := db.Query(`SELECT id, nome FROM participante ORDER BY nome ASC`)
+	partRows, err := db.Query(`SELECT id, nome, ativo FROM participante ORDER BY nome ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("GetDashboardOptions participantes: %w", err)
 	}
@@ -60,7 +60,7 @@ func GetDashboardOptions(db *sql.DB) (*model.DashboardOptions, error) {
 	var participantes []model.ParticipantSummary
 	for partRows.Next() {
 		var ps model.ParticipantSummary
-		if err := partRows.Scan(&ps.ID, &ps.Nome); err != nil {
+		if err := partRows.Scan(&ps.ID, &ps.Nome, &ps.Ativo); err != nil {
 			return nil, fmt.Errorf("GetDashboardOptions participante scan: %w", err)
 		}
 		participantes = append(participantes, ps)

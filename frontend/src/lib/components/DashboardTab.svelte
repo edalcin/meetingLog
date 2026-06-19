@@ -38,8 +38,21 @@
   let error = $state('')
   let filterType = $state('all')
   let filterValue = $state('')
+  let statusFilter = $state('all')
 
   let options = $state({ anos: [], projetos: [], participantes: [] })
+
+  let filteredProjetos = $derived(
+    statusFilter === 'active'   ? options.projetos.filter(p => p.ativo) :
+    statusFilter === 'inactive' ? options.projetos.filter(p => !p.ativo) :
+    options.projetos
+  )
+
+  let filteredParticipantes = $derived(
+    statusFilter === 'active'   ? options.participantes.filter(p => p.ativo) :
+    statusFilter === 'inactive' ? options.participantes.filter(p => !p.ativo) :
+    options.participantes
+  )
   // $state.raw: Chart.js calls Object.defineProperty on received arrays/objects.
   // Deep-proxied $state throws state_descriptors_fixed when Chart.js touches them.
   let dashData = $state.raw(null)
@@ -251,10 +264,17 @@
     chartTopParticipantesPizza.update()
   }
 
-  // Reset filterValue whenever filterType changes
+  // Reset filterValue whenever filterType or statusFilter changes
   $effect(() => {
     filterType
     filterValue = ''
+  })
+
+  $effect(() => {
+    statusFilter
+    if (filterType === 'project' || filterType === 'participant') {
+      filterValue = ''
+    }
   })
 
   // Reload dashboard data when filters change
@@ -289,6 +309,17 @@
       <option value="participant">Por Participante</option>
     </select>
 
+    {#if filterType === 'project' || filterType === 'participant'}
+      <select
+        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        bind:value={statusFilter}
+      >
+        <option value="all">Todos</option>
+        <option value="active">Ativos</option>
+        <option value="inactive">Inativos</option>
+      </select>
+    {/if}
+
     {#if filterType !== 'all'}
       <select
         class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -300,11 +331,11 @@
             <option value={ano}>{ano}</option>
           {/each}
         {:else if filterType === 'project'}
-          {#each options.projetos as p}
+          {#each filteredProjetos as p}
             <option value={String(p.id)}>{p.nome}</option>
           {/each}
         {:else if filterType === 'participant'}
-          {#each options.participantes as p}
+          {#each filteredParticipantes as p}
             <option value={String(p.id)}>{p.nome}</option>
           {/each}
         {/if}

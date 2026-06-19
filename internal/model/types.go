@@ -172,6 +172,7 @@ type ProjectSummary struct {
 type ParticipantSummary struct {
 	ID   int64  `json:"id"`
 	Nome string `json:"nome"`
+	Ativo bool  `json:"ativo,omitempty"`
 }
 
 // MeetingSummary is a lightweight meeting used in nested lists.

@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/edalcin/meetinglog/internal/security"
@@ -28,11 +29,25 @@ func Open(dbPath string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 
 	isMemory := strings.Contains(dbPath, ":memory:") || strings.Contains(dbPath, "mode=memory")
-
 	if !isMemory {
 		if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
+			// SQLITE_CORRUPT (11) at WAL pragma usually means the -wal/-shm
+			// sidecar files are inconsistent with the main DB (e.g. the
+			// container was killed mid-checkpoint). Delete them and retry once;
+			// any unsynced WAL pages are lost but the checkpointed data is intact.
 			db.Close()
-			return nil, fmt.Errorf("store.Open pragma journal_mode: %w", err)
+			walRemoved := tryRemoveWALSidecars(dbPath)
+			log.Printf("store.Open: WAL pragma failed (%v); sidecar removal attempted (removed=%v), retrying", err, walRemoved)
+
+			db, err = sql.Open("sqlite", dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("store.Open (retry): %w", err)
+			}
+			db.SetMaxOpenConns(1)
+			if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
+				db.Close()
+				return nil, fmt.Errorf("store.Open pragma journal_mode: %w (database may be permanently corrupted — restore from backup)", err)
+			}
 		}
 		if _, err := db.Exec("PRAGMA synchronous = NORMAL"); err != nil {
 			db.Close()
@@ -140,4 +155,18 @@ func backfillDeltaToHTML(db *sql.DB) error {
 		log.Printf("store: converted %d Quill Delta notes to HTML", total)
 	}
 	return nil
+}
+
+// tryRemoveWALSidecars deletes the WAL and SHM sidecar files that SQLite
+// creates alongside a WAL-mode database. Returns true if at least one file
+// was removed. Errors are intentionally ignored — if the files cannot be
+// removed the subsequent Open attempt will fail with its own error.
+func tryRemoveWALSidecars(dbPath string) bool {
+	removed := false
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if err := os.Remove(dbPath + suffix); err == nil {
+			removed = true
+		}
+	}
+	return removed
 }

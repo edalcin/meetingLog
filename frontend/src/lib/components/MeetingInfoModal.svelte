@@ -13,6 +13,7 @@
   let uploading = $state(false)
   let uploadError = $state('')
   let fileInput = $state(null)
+  let viewingFile = $state(null)
 
   const TIPO_BADGE = {
     'Presencial': 'bg-green-100 text-green-800',
@@ -102,7 +103,13 @@
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) onClose?.()
   }
+
+  function handleViewerKey(e) {
+    if (e.key === 'Escape') viewingFile = null
+  }
 </script>
+
+<svelte:window onkeydown={handleViewerKey} />
 
 <!-- Overlay -->
 <div
@@ -303,7 +310,7 @@
                   <div class="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onclick={() => window.open(`/api/files/${file.id}/content`, '_blank')}
+                      onclick={() => viewingFile = file}
                       title="Visualizar"
                       class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     >
@@ -370,3 +377,53 @@
 
   </div>
 </div>
+
+<!-- File viewer overlay -->
+{#if viewingFile}
+  <div
+    class="fixed inset-0 bg-black/85 z-[60] flex flex-col items-center justify-center p-4"
+    onclick={() => viewingFile = null}
+    role="dialog"
+    aria-modal="true"
+  >
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between w-full max-w-5xl mb-2 shrink-0"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <span class="text-white text-sm font-medium truncate max-w-[80%]" title={viewingFile.filename_original}>
+        {viewingFile.filename_original}
+      </span>
+      <button
+        type="button"
+        onclick={() => viewingFile = null}
+        title="Fechar (Esc)"
+        class="text-white hover:text-gray-300 transition-colors p-1 ml-4 shrink-0"
+        aria-label="Fechar visualizador"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Content -->
+    {#if viewingFile.mime_type === 'application/pdf'}
+      <iframe
+        src="/api/files/{viewingFile.id}/content"
+        title={viewingFile.filename_original}
+        class="w-full max-w-5xl rounded shadow-2xl bg-white"
+        style="height: 85vh"
+        onclick={(e) => e.stopPropagation()}
+      ></iframe>
+    {:else}
+      <img
+        src="/api/files/{viewingFile.id}/content"
+        alt={viewingFile.filename_original}
+        class="max-w-[90vw] rounded shadow-2xl object-contain"
+        style="max-height: 85vh"
+        onclick={(e) => e.stopPropagation()}
+      />
+    {/if}
+  </div>
+{/if}

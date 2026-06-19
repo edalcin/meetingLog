@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { api } from '../api.js'
   import MeetingFormModal from './MeetingFormModal.svelte'
   import MeetingInfoModal from './MeetingInfoModal.svelte'
@@ -7,6 +7,8 @@
   let meetings = $state([])
   let totalCount = $state(0)
   let loading = $state(true)
+  let loadingMore = $state(false)
+  let hasMore = $state(false)
   let error = $state('')
 
   // Filters
@@ -19,19 +21,23 @@
   let showPartDropdown = $state(false)
   let showProjDropdown = $state(false)
 
-  // Sort/Pagination
+  // Sort
   let sortCol = $state('data_hora')
   let sortOrder = $state('desc')
-  let page = $state(1)
-  const limit = 25
+
+  // Internal pagination counter — not reactive, managed manually
+  let page = 1
+  const limit = 50
+
+  // Infinite scroll
+  let sentinel
+  let observer
 
   // Modals
   let showFormModal = $state(false)
   let editingMeeting = $state(null)
   let showInfoModal = $state(false)
   let infoMeetingId = $state(null)
-
-  let totalPages = $derived(Math.ceil(totalCount / limit))
 
   let filteredParticipants = $derived(
     allParticipants.filter(p =>
@@ -47,8 +53,9 @@
     ).slice(0, 10)
   )
 
-  async function load() {
-    loading = true
+  async function load(append = false) {
+    if (append) loadingMore = true
+    else loading = true
     error = ''
     try {
       const params = new URLSearchParams({
@@ -60,24 +67,52 @@
       if (selectedParticipantIds.length) params.set('part_ids', selectedParticipantIds.join(','))
       if (selectedProjectIds.length) params.set('proj_ids', selectedProjectIds.join(','))
       const data = await api.get(`/api/meetings?${params}`)
-      meetings = data.data ?? []
+      const batch = data.data ?? []
       totalCount = data.total ?? 0
+      meetings = append ? [...meetings, ...batch] : batch
+      hasMore = meetings.length < totalCount
     } catch (e) {
       error = e.message
     } finally {
       loading = false
+      loadingMore = false
+      // Re-observe sentinel so observer re-fires if it's still in viewport
+      if (sentinel && observer) {
+        observer.unobserve(sentinel)
+        observer.observe(sentinel)
+      }
     }
+  }
+
+  async function reset() {
+    page = 1
+    await load(false)
+  }
+
+  async function loadMore() {
+    if (!hasMore || loading || loadingMore) return
+    page++
+    await load(true)
   }
 
   onMount(async () => {
     const [parts, projs] = await Promise.all([
-      api.get('/api/participants?limit=1000').catch(() => []),
-      api.get('/api/projects?limit=1000').catch(() => []),
+      api.get('/api/participants?limit=1000').catch(() => ({ data: [] })),
+      api.get('/api/projects?limit=1000').catch(() => ({ data: [] })),
     ])
     allParticipants = parts.data ?? []
     allProjects = projs.data ?? []
-    await load()
+
+    observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) loadMore() },
+      { rootMargin: '300px' }
+    )
+    if (sentinel) observer.observe(sentinel)
+
+    await reset()
   })
+
+  onDestroy(() => observer?.disconnect())
 
   function toggleSort(col) {
     if (sortCol === col) {
@@ -86,36 +121,31 @@
       sortCol = col
       sortOrder = 'asc'
     }
-    page = 1
-    load()
+    reset()
   }
 
   function addParticipant(p) {
     selectedParticipantIds = [...selectedParticipantIds, p.id]
     participantSearch = ''
     showPartDropdown = false
-    page = 1
-    load()
+    reset()
   }
 
   function removeParticipant(id) {
     selectedParticipantIds = selectedParticipantIds.filter(x => x !== id)
-    page = 1
-    load()
+    reset()
   }
 
   function addProject(p) {
     selectedProjectIds = [...selectedProjectIds, p.id]
     projectSearch = ''
     showProjDropdown = false
-    page = 1
-    load()
+    reset()
   }
 
   function removeProject(id) {
     selectedProjectIds = selectedProjectIds.filter(x => x !== id)
-    page = 1
-    load()
+    reset()
   }
 
   function formatDate(dt) {
@@ -137,7 +167,7 @@
     if (!window.confirm('Excluir esta reunião?')) return
     try {
       await api.del(`/api/meetings/${id}`)
-      await load()
+      await reset()
     } catch (e) {
       alert(e.message)
     }
@@ -350,28 +380,17 @@
           </tbody>
         </table>
       </div>
-
-      <!-- Pagination -->
-      {#if totalPages > 1}
-        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-          <p class="text-sm text-gray-600">Página {page} de {totalPages}</p>
-          <div class="flex gap-2">
-            <button
-              onclick={() => { page--; load() }}
-              disabled={page <= 1}
-              class="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50">
-              Anterior
-            </button>
-            <button
-              onclick={() => { page++; load() }}
-              disabled={page >= totalPages}
-              class="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50">
-              Próxima
-            </button>
-          </div>
-        </div>
-      {/if}
     {/if}
+
+    <!-- Loading more indicator -->
+    {#if loadingMore}
+      <div class="flex items-center justify-center py-4 border-t border-gray-100">
+        <div class="animate-spin w-5 h-5 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      </div>
+    {/if}
+
+    <!-- Infinite scroll sentinel -->
+    <div bind:this={sentinel}></div>
   </div>
 </div>
 
@@ -379,7 +398,7 @@
   <MeetingFormModal
     meeting={editingMeeting}
     onClose={() => showFormModal = false}
-    onSaved={() => { showFormModal = false; load() }}
+    onSaved={() => { showFormModal = false; reset() }}
   />
 {/if}
 

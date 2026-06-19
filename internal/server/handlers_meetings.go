@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/edalcin/meetinglog/internal/model"
 	"github.com/edalcin/meetinglog/internal/store"
@@ -34,7 +35,7 @@ func (s *Server) handleListMeetings() http.HandlerFunc {
 		if !allowedSort[sort] {
 			sort = "data_hora"
 		}
-		order := q.Get("order")
+		order := strings.ToUpper(q.Get("order"))
 		if order != "ASC" && order != "DESC" {
 			order = "DESC"
 		}

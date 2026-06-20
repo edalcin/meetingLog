@@ -50,7 +50,7 @@
   export function setContent(html) { editor?.commands.setContent(html) }
 </script>
 
-<div class="border border-gray-300 rounded-lg overflow-hidden bg-white {fill ? 'flex flex-col flex-1 min-h-0' : ''}">
+<div class="{editable ? 'border border-gray-300 rounded-lg overflow-hidden bg-white' : ''} {fill ? 'flex flex-col flex-1 min-h-0' : ''}">
   {#if editable}
     <div class="flex gap-1 p-2 border-b border-gray-200 flex-wrap bg-gray-50">
       <button type="button"

@@ -185,9 +185,7 @@
     {#if meeting.notas}
       <section>
         <h2 class="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4 mt-8">Notas</h2>
-        <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
           <RichEditor content={meeting.notas} editable={false} />
-        </div>
       </section>
     {/if}
 

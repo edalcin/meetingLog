@@ -257,12 +257,10 @@
         {#if meeting.notas}
           <div>
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Notas</h3>
-            <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <RichEditor
-                content={meeting.notas}
-                editable={false}
-              />
-            </div>
+            <RichEditor
+              content={meeting.notas}
+              editable={false}
+            />
           </div>
         {/if}
 

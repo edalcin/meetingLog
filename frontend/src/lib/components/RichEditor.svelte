@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { Editor } from '@tiptap/core'
+  import { Editor, Extension } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import Link from '@tiptap/extension-link'
   import Placeholder from '@tiptap/extension-placeholder'
@@ -26,6 +26,15 @@
         StarterKit,
         Link.configure({ openOnClick: false }),
         Placeholder.configure({ placeholder }),
+        Extension.create({
+          name: 'tabHandler',
+          addKeyboardShortcuts() {
+            return {
+              Tab:       () => this.editor.commands.sinkListItem('listItem'),
+              'Shift-Tab': () => this.editor.commands.liftListItem('listItem'),
+            }
+          },
+        }),
       ],
       content,
       editable,

@@ -14,4 +14,5 @@ Thumbs.db
 .claude/settings.local.json
 .claude/settings*.json
 *.exe
+*.exe~
 data/

@@ -5,15 +5,20 @@ Aplicação web para registrar e consultar reuniões, com interface moderna e re
 ## Funcionalidades
 
 - **Reuniões** — listagem com rolagem infinita, ordenação por colunas, filtros por participante e projeto, notas ricas, pautas e links
-- **Participantes** — cadastro com instituição, cargo, lotação, e-mail, status ativo/inativo, notas
-- **Projetos** — vínculo com instituições e participantes, links, notas, status ativo/inativo
+- **Auto-save em background** — reunião e notas salvas automaticamente após pausa na edição; intervalo configurável em Manutenção → Configurações (padrão: 5 s)
+- **Participantes** — cadastro com instituição, cargo, lotação, e-mail, status ativo/inativo, notas; nomes clicáveis na lista de reuniões abrem a ficha
+- **Projetos** — vínculo com instituições e participantes, links, notas, status ativo/inativo; nomes clicáveis na lista de reuniões abrem a ficha
 - **Instituições** — cadastro de sigla e nome
-- **Arquivos** — upload de imagens (PNG/JPEG) e PDFs por reunião; visualização em modal (sem abrir nova aba); thumbnails automáticos
-- **Dashboard** — gráficos de reuniões por mês, top participantes, top projetos, horários e dias da semana, filtros por ano/projeto/participante com filtro de status (ativos/inativos)
+- **Arquivos** — upload de imagens (PNG/JPEG) e PDFs por reunião; ícones distintos (PDF vermelho, imagem azul) com contagem na lista de reuniões; visualização em modal
+- **Dashboard** — gráficos de reuniões por mês, top participantes, top projetos, horários e dias da semana, filtros por ano/projeto/participante
 - **Links compartilháveis** — URLs públicas read-only por reunião ou filtro
-- **Backup e restauração** — download/upload do `.sqlite` pela própria interface
+- **Manutenção**
+  - Substituição de projetos em reuniões (com dry-run)
+  - Substituição de participantes em reuniões (com dry-run)
+  - Configurações: intervalo de auto-save (2–300 s)
+  - Backup e restauração do banco de dados
 - **Autenticação via PIN** — sessão server-side, throttle de 5 tentativas, lockout de 30 min
-- **PWA** — instalável em dispositivos móveis
+- **PWA** — instalável em dispositivos móveis; app shell disponível offline
 
 ## Stack Tecnológico
 
@@ -59,6 +64,10 @@ Acesse: `http://localhost:3000`
 | `ML_MAX_RESTORE_MB` | Não | `512` | Limite para restauração de backup em MB |
 | `ML_TRUST_PROXY_HEADERS` | Não | — | Confiar em `X-Forwarded-For` (reverse proxy) |
 
+## Configurações (interface)
+
+Em **Manutenção → Configurações** é possível ajustar o intervalo de auto-save (2–300 segundos). O valor é armazenado na tabela `settings` do SQLite — não é uma variável de ambiente.
+
 ## Desenvolvimento
 
 ### Pré-requisitos
@@ -78,6 +87,7 @@ npm run dev            # servidor Vite com HMR (frontend isolado)
 # Backend (Go)
 go build ./...         # compila todos os pacotes
 go vet ./...           # verificação estática
+go test ./internal/store/...  # testes unitários do store
 go build -o meetinglog ./cmd/meetinglog  # binário final
 
 # Executar localmente (requer frontend buildado primeiro)

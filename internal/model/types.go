@@ -9,7 +9,9 @@ type Meeting struct {
 	CriadoEm     string   `json:"criado_em"`
 	AtualizadoEm string   `json:"atualizado_em"`
 	HasNotas      bool     `json:"has_notas,omitempty"`
-	ArquivoCount  int      `json:"arquivo_count,omitempty"`
+	ArquivoCount    int      `json:"arquivo_count,omitempty"`
+	ArquivoPDFCount int      `json:"arquivo_pdf_count,omitempty"`
+	ArquivoImgCount int      `json:"arquivo_img_count,omitempty"`
 
 	// Populated in list responses
 	ParticipantesNomes string  `json:"participantes_nomes,omitempty"`
@@ -258,4 +260,9 @@ type MaintenanceMeeting struct {
 	ID                int64  `json:"id"`
 	DataFmt           string `json:"data_fmt"`
 	ParticipantesNomes string `json:"participantes_nomes"`
+}
+
+// Settings holds application-level configuration.
+type Settings struct {
+	AutosaveIntervalSeconds int `json:"autosave_interval_seconds"`
 }

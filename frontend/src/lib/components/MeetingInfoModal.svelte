@@ -202,7 +202,7 @@
             <h3 class="text-sm font-semibold text-gray-700 mb-2">Participantes</h3>
             <p class="text-sm text-gray-800 leading-relaxed">
               {#each meeting.participantes as p, i}
-                <span>{p.nome}{#if p.instituicao}<span class="text-gray-400"> ({p.instituicao})</span>{/if}{#if i < meeting.participantes.length - 1}, {/if}</span>
+                <span>{p.nome}{#if p.instituicao}{' '}<span class="text-gray-400">({p.instituicao})</span>{/if}{#if i < meeting.participantes.length - 1}{', '}{/if}</span>
               {/each}
             </p>
           </div>

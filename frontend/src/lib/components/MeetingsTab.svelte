@@ -3,6 +3,8 @@
   import { api } from '../api.js'
   import MeetingFormModal from './MeetingFormModal.svelte'
   import MeetingInfoModal from './MeetingInfoModal.svelte'
+  import ParticipantInfoModal from './ParticipantInfoModal.svelte'
+  import ProjectInfoModal from './ProjectInfoModal.svelte'
 
   let meetings = $state([])
   let totalCount = $state(0)
@@ -38,6 +40,10 @@
   let editingMeeting = $state(null)
   let showInfoModal = $state(false)
   let infoMeetingId = $state(null)
+  let showParticipantInfo = $state(false)
+  let infoParticipantId = $state(null)
+  let showProjectInfo = $state(false)
+  let infoProjectId = $state(null)
 
   let filteredParticipants = $derived(
     allParticipants.filter(p =>
@@ -192,6 +198,25 @@
     if (sortCol !== col) return '↕'
     return sortOrder === 'asc' ? '↑' : '↓'
   }
+
+  function resolveParticipants(m) {
+    return (m.participante_ids ?? []).map(id => allParticipants.find(p => p.id === id)).filter(Boolean)
+  }
+
+  function resolveProjects(m) {
+    return (m.projeto_ids ?? []).map(id => allProjects.find(p => p.id === id)).filter(Boolean)
+  }
+
+  function openParticipantInfo(id) {
+    infoParticipantId = id
+    showParticipantInfo = true
+  }
+
+  function openProjectInfo(id) {
+    infoProjectId = id
+    showProjectInfo = true
+  }
+
 </script>
 
 <div class="space-y-4">
@@ -325,6 +350,8 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             {#each meetings as m}
+              {@const partList = resolveParticipants(m)}
+              {@const projList = resolveProjects(m)}
               <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-4 py-3 text-gray-900 whitespace-nowrap">{formatDate(m.data_hora)}</td>
                 <td class="px-4 py-3">
@@ -332,11 +359,23 @@
                     {m.tipo}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-gray-700 max-w-xs truncate">
-                  {m.participantes_nomes ?? '—'}
+                <td class="px-4 py-3 text-gray-700 max-w-xs">
+                  {#if partList.length > 0}
+                    {#each partList as p, i}
+                      <button type="button" class="text-blue-600 hover:underline" onclick={() => openParticipantInfo(p.id)}>{p.nome}</button>{#if i < partList.length - 1}{', '}{/if}
+                    {/each}
+                  {:else}
+                    {m.participantes_nomes ?? '—'}
+                  {/if}
                 </td>
-                <td class="px-4 py-3 text-gray-700 max-w-xs truncate">
-                  {m.projeto_nomes ?? '—'}
+                <td class="px-4 py-3 text-gray-700 max-w-xs">
+                  {#if projList.length > 0}
+                    {#each projList as p, i}
+                      <button type="button" class="text-blue-600 hover:underline" onclick={() => openProjectInfo(p.id)}>{p.nome}</button>{#if i < projList.length - 1}{', '}{/if}
+                    {/each}
+                  {:else}
+                    {m.projeto_nomes ?? '—'}
+                  {/if}
                 </td>
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-1">
@@ -347,11 +386,20 @@
                         </svg>
                       </span>
                     {/if}
-                    {#if m.arquivo_count > 0}
-                      <span title="{m.arquivo_count} arquivo(s)" class="text-gray-400">
+                    {#if m.arquivo_pdf_count > 0}
+                      <span title="{m.arquivo_pdf_count} PDF(s)" class="flex items-center gap-0.5 text-red-500">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
+                        <span class="text-xs">{m.arquivo_pdf_count}</span>
+                      </span>
+                    {/if}
+                    {#if m.arquivo_img_count > 0}
+                      <span title="{m.arquivo_img_count} imagem(ns)" class="flex items-center gap-0.5 text-blue-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="text-xs">{m.arquivo_img_count}</span>
                       </span>
                     {/if}
                   </div>
@@ -407,5 +455,19 @@
     meetingId={infoMeetingId}
     onClose={() => showInfoModal = false}
     onEdit={(m) => { showInfoModal = false; openEdit(m) }}
+  />
+{/if}
+
+{#if showParticipantInfo}
+  <ParticipantInfoModal
+    participantId={infoParticipantId}
+    onClose={() => showParticipantInfo = false}
+  />
+{/if}
+
+{#if showProjectInfo}
+  <ProjectInfoModal
+    projectId={infoProjectId}
+    onClose={() => showProjectInfo = false}
   />
 {/if}

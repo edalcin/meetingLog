@@ -66,6 +66,8 @@ func scanMeetingRow(rows *sql.Rows) (model.Meeting, error) {
 		&m.AtualizadoEm,
 		&hasNotas,
 		&m.ArquivoCount,
+		&m.ArquivoPDFCount,
+		&m.ArquivoImgCount,
 		&participantesNomes,
 		&participanteIDsStr,
 		&projetoNomes,
@@ -146,6 +148,8 @@ func ListMeetings(db *sql.DB, partIDs []int64, projIDs []int64, sort, order stri
 		SELECT r.id, r.data_hora, r.tipo, r.criado_em, r.atualizado_em,
 		       (r.notas IS NOT NULL) AS has_notas,
 		       (SELECT COUNT(*) FROM arquivo WHERE reuniao_id = r.id) AS arquivo_count,
+		       (SELECT COUNT(*) FROM arquivo WHERE reuniao_id = r.id AND mime_type = 'application/pdf') AS arquivo_pdf_count,
+		       (SELECT COUNT(*) FROM arquivo WHERE reuniao_id = r.id AND mime_type LIKE 'image/%%') AS arquivo_img_count,
 		       (SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT p2.nome FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)) AS participantes_nomes,
 		       (SELECT GROUP_CONCAT(id, ',') FROM (SELECT p2.id FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)) AS participante_ids_str,
 		       (SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT pr2.nome FROM projeto pr2 JOIN reuniao_projeto rpj2 ON rpj2.projeto_id = pr2.id WHERE rpj2.reuniao_id = r.id ORDER BY pr2.nome)) AS projeto_nomes,
@@ -448,20 +452,6 @@ func UpdateMeeting(db *sql.DB, id int64, dataHora, tipo string, notas *string, p
 	}
 	m.RejectedURLs = rejected
 	return m, rejected, nil
-}
-
-// UpdateMeetingNotes updates only the notas field of a meeting.
-// Returns ErrNotFound when no row matches.
-func UpdateMeetingNotes(db *sql.DB, id int64, notas *string) error {
-	res, err := db.Exec(`UPDATE reuniao SET notas = ? WHERE id = ?`, notas, id)
-	if err != nil {
-		return fmt.Errorf("UpdateMeetingNotes: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
 }
 
 // DeleteMeeting removes a meeting. Cascade constraints in the schema handle

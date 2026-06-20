@@ -147,3 +147,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at  INTEGER NOT NULL,
   last_seen_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);

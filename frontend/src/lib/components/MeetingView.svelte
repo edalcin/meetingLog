@@ -129,7 +129,7 @@
         <ul class="space-y-1">
           {#each meeting.participantes as p}
             <li class="text-sm text-gray-800">
-              {p.nome}{#if p.instituicao}<span class="text-gray-500"> ({p.instituicao})</span>{/if}
+              {p.nome}{#if p.instituicao}{' '}<span class="text-gray-500">({p.instituicao})</span>{/if}
             </li>
           {/each}
         </ul>

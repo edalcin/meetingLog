@@ -1,6 +1,6 @@
 # meetingLog Development Guidelines
 
-Last updated: 2026-06-14
+Last updated: 2026-06-20
 
 ## Project Overview
 
@@ -21,11 +21,14 @@ Aplicação web para registro e consulta de reuniões. Binário único Go (chi) 
 cmd/meetinglog/main.go          # Entry point, -healthcheck flag, graceful shutdown
 internal/
   config/config.go              # Env vars (nomes mantidos do Node: APP_PIN, DB_PATH, etc.)
-  model/types.go                # Structs Go com JSON tags
+  model/types.go                # Structs Go com JSON tags (Meeting, Participant, Project,
+                                #   Institution, Settings, MaintenanceAffected, ...)
   store/
     open.go                     # Abre DB, aplica schema, backfill Delta→HTML
     schema.sql                  # Schema SQLite idempotente (IF NOT EXISTS), embutido via go:embed
+                                #   Inclui tabela settings (key TEXT PK, value TEXT NOT NULL)
     quilldelta.go               # Conversor Quill Delta JSON → HTML (backfill único no startup)
+    settings.go                 # GetSetting, SetSetting, GetAutosaveIntervalSeconds + constantes
     meetings.go participants.go projects.go institutions.go
     dashboard.go files.go sharelinks.go backup.go
     errors.go tx.go
@@ -34,7 +37,7 @@ internal/
     assets.go                   # //go:embed all:web/dist
     respond.go                  # writeJSON, parseID, handleStoreErr
     handlers_{auth,health,meetings,participants,projects,institutions,
-              dashboard,files,maintenance,sharelinks,public}.go
+              dashboard,files,maintenance,sharelinks,public,settings}.go
     middleware_{security,auth,csrf,throttle}.go
     web/dist/                   # Output do Vite (gerado em build, embutido no binário)
   security/                     # password, tokens, csrf, sanitize, paths
@@ -44,9 +47,27 @@ internal/
 frontend/                       # Svelte 5 + Vite (npm run build → internal/server/web/dist)
   src/
     App.svelte lib/api.js lib/stores/auth.js
-    lib/components/{LoginPage,MeetingsTab,MeetingFormModal,MeetingInfoModal,
-                    ParticipantsTab,ProjectsTab,InstitutionsTab,
-                    DashboardTab,MaintenanceTab,SharedView,MeetingView,RichEditor}.svelte
+    lib/components/
+      LoginPage.svelte
+      MeetingsTab.svelte           # Lista com ícones PDF/imagem, nomes clicáveis
+      MeetingFormModal.svelte      # Auto-save unificado (POST/PUT debounced)
+      MeetingInfoModal.svelte
+      MeetingView.svelte
+      ParticipantsTab.svelte       # Usa ParticipantInfoModal
+      ParticipantInfoModal.svelte  # Ficha reutilizável (MeetingsTab + ParticipantsTab)
+      ProjectsTab.svelte           # Usa ProjectInfoModal
+      ProjectInfoModal.svelte      # Ficha reutilizável (MeetingsTab + ProjectsTab)
+      InstitutionsTab.svelte
+      DashboardTab.svelte
+      MaintenanceTab.svelte        # Compõe ReplaceEntitySection × 2 + Configurações
+      ReplaceEntitySection.svelte  # Substituição genérica de entidade (projetos ou participantes)
+      SharedView.svelte
+      RichEditor.svelte
+  public/
+    manifest.webmanifest          # PWA manifest com ícones 192/512
+    sw.js                         # Service worker: network-first nav + SWR assets
+    favicon.ico favicon-*.png
+    icons/                        # icon-192.png, icon-512.png, icon.svg, apple-touch-icon.png
 .github/workflows/              # CI: build-and-publish, promote-to-prod, ghcr-cleanup
 ```
 
@@ -59,8 +80,9 @@ npm run build           # gera internal/server/web/dist/
 
 # Backend
 go build ./...          # compila todos os pacotes
-go build -o meetinglog ./cmd/meetinglog  # binário final
 go vet ./...
+go test ./internal/store/...   # testes do store (settings + ReplaceParticipant)
+go build -o meetinglog ./cmd/meetinglog  # binário final
 
 # Docker
 docker build .          # imagem distroless ~20MB
@@ -119,6 +141,28 @@ Executado automaticamente em `store.Open` na primeira inicialização. Converte 
 
 `/api/files/{id}/content` usa middleware `FileContentCSP` que define `X-Frame-Options: SAMEORIGIN` e `frame-ancestors 'self'` para o viewer `<iframe>`. PDFs não têm thumbnail — retorna ícone PNG embutido.
 
+## Auto-save (MeetingFormModal)
+
+- Intervalo configurável via `GET/PUT /api/settings` (`autosave_interval_seconds`, padrão 5 s, range 2–300 s)
+- Auto-save unificado: faz `POST /api/meetings` na criação (quando data+hora + ≥1 participante) e `PUT /api/meetings/{id}` nas edições
+- Não inclui upload de arquivos — apenas o payload JSON da reunião
+- `handleClose()` faz flush antes de fechar o modal
+- Endpoint `PATCH /api/meetings/{id}/notas` removido (sem consumidores)
+
+## PWA
+
+- `frontend/public/sw.js`: network-first para navegação (fallback ao shell em cache `/`); stale-while-revalidate para assets estáticos; network-only para `/api/*`
+- Manifest: `scope="/"`, `display="standalone"`, ícones 192 + 512
+- `GET /manifest.webmanifest`, `GET /sw.js`, `GET /favicon*` roteados em `buildRouter` antes do grupo autenticado
+
+## Tabela `settings`
+
+```sql
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+```
+
+Chave atual: `autosave_interval_seconds`. Lida/escrita via `store.GetSetting` / `store.SetSetting`. `GetAutosaveIntervalSeconds` retorna o padrão (`5`) para valores ausentes, não-numéricos ou fora de `[2, 300]`.
+
 ## Variáveis de Ambiente
 
 | Variável | Padrão | Descrição |
@@ -140,12 +184,3 @@ Executado automaticamente em `store.Open` na primeira inicialização. Converte 
 - CSRF double-submit: cookie `meetinglog_csrf` + header `X-CSRF-Token`
 - Throttle: 5 falhas → lockout 30 min (por IP)
 - Links públicos read-only: `GET /api/p/{token}` e `GET /api/p/{token}/meetings`
-
-## Notas de Migração (Node → Go)
-
-- `migrations/*.sql` substituídas por `schema.sql` idempotente (um arquivo, tudo `IF NOT EXISTS`)
-- `docker-entrypoint.sh` + `su-exec` removidos — Go faz `os.MkdirAll` no startup
-- `better-sqlite3` (nativo) → `modernc.org/sqlite` (puro Go): mesmo dialeto SQL
-- `sharp` → `golang.org/x/image/draw.CatmullRom`
-- `poppler` removido → ícone PDF estático
-- `/data` deve ser gravável por UID 65532 (`distroless:nonroot`)

@@ -48,6 +48,10 @@
 
   // Autosave
   let autosaveTimer
+  let autosaveDelayMs = $state(5000)
+  let settingsLoaded = $state(false)
+  let autoStatus = $state('') // '' | 'saving' | 'saved' | 'error'
+  let lastSavedSig = $state('')
 
   const TIPOS = ['Presencial', 'Remota', 'Hibrida', 'Híbrida', 'Telefone']
 
@@ -81,8 +85,10 @@
       api.get('/api/participants?limit=500').catch(() => ({ data: [] })),
       api.get('/api/projects?limit=500').catch(() => ({ data: [] })),
       meeting?.id ? api.get(`/api/meetings/${meeting.id}`) : Promise.resolve(null),
+      api.get('/api/settings').catch(() => ({ autosave_interval_seconds: 5 })),
     ]
-    const [parts, projs, detail] = await Promise.all(fetches)
+    const [parts, projs, detail, settings] = await Promise.all(fetches)
+    autosaveDelayMs = (settings?.autosave_interval_seconds ?? 5) * 1000
     allParticipants = parts.data ?? []
     allProjects = projs.data ?? []
 
@@ -115,6 +121,8 @@
       // TipTap initializes with content at mount time (empty string).
       // Call setContent explicitly to load the fetched HTML into the editor.
       editorRef?.setContent(notasHtml)
+      lastSavedSig = currentSig()
+      settingsLoaded = true
     }
   })
 
@@ -122,21 +130,52 @@
     clearTimeout(autosaveTimer)
   })
 
-  // ── Autosave notes (edit mode) ────────────────────────────────────────────
-  function scheduleAutosave(html) {
-    clearTimeout(autosaveTimer)
-    autosaveTimer = setTimeout(async () => {
-      if (editingId) {
-        try { await api.patch(`/api/meetings/${editingId}/notas`, { notas: html }) } catch {}
-      }
-    }, 1500)
+  // ── Autosave ──────────────────────────────────────────────────────────────
+  function currentSig() {
+    return JSON.stringify({ dataHora, tipo, notasHtml, pautas, links,
+                            pi: selectedParticipantIds, pj: selectedProjectIds })
   }
 
   $effect(() => {
-    if (editingId && notasHtml !== undefined) {
-      scheduleAutosave(notasHtml)
-    }
+    const sig = currentSig()
+    if (!settingsLoaded || sig === lastSavedSig) return
+    clearTimeout(autosaveTimer)
+    autosaveTimer = setTimeout(autosave, autosaveDelayMs)
   })
+
+  async function autosave() {
+    if (validate()) return
+    const notas = editorRef?.getHTML() ?? notasHtml
+    const payload = {
+      data_hora: dataHora,
+      tipo,
+      notas,
+      participante_ids: selectedParticipantIds,
+      projeto_ids: selectedProjectIds,
+      pautas: pautas.map(p => p.texto),
+      links: links
+        .filter(l => l.url.trim())
+        .map((l, i) => ({ nome: l.nome.trim() || null, url: l.url.trim(), ordem: i + 1 })),
+    }
+    autoStatus = 'saving'
+    try {
+      const result = editingId
+        ? await api.put(`/api/meetings/${editingId}`, payload)
+        : await api.post('/api/meetings', payload)
+      if (!editingId) editingId = result?.id ?? editingId
+      if (result?.rejected_urls?.length) rejectedUrls = result.rejected_urls
+      lastSavedSig = currentSig()
+      autoStatus = 'saved'
+    } catch {
+      autoStatus = 'error'
+    }
+  }
+
+  async function handleClose() {
+    clearTimeout(autosaveTimer)
+    if (settingsLoaded && currentSig() !== lastSavedSig) await autosave()
+    onClose?.()
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function toDatetimeLocal(iso) {
@@ -309,7 +348,7 @@
   }
 
   function handleOverlayClick(e) {
-    if (e.target === e.currentTarget) onClose?.()
+    if (e.target === e.currentTarget) handleClose()
   }
 </script>
 
@@ -330,7 +369,7 @@
       </h2>
       <button
         type="button"
-        onclick={onClose}
+        onclick={handleClose}
         class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -649,8 +688,12 @@
                 fill={true}
                 placeholder="Anotações da reunião..."
               />
-              {#if editingId}
+              {#if autoStatus === 'saving'}
+                <p class="text-xs text-gray-400 mt-1">Salvando...</p>
+              {:else if autoStatus === 'saved'}
                 <p class="text-xs text-gray-400 mt-1">Salvo automaticamente</p>
+              {:else if autoStatus === 'error'}
+                <p class="text-xs text-red-400 mt-1">Falha ao salvar — tentando novamente</p>
               {/if}
             </div>
 
@@ -662,7 +705,7 @@
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0 bg-gray-50 rounded-b-2xl">
         <button
           type="button"
-          onclick={onClose}
+          onclick={handleClose}
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           Cancelar

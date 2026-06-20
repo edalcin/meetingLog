@@ -265,3 +265,65 @@ func DeleteParticipant(db *sql.DB, id int64) error {
 	}
 	return nil
 }
+
+// ReplaceParticipant substitutes fromID with toID in all meetings.
+// When dryRun is false, runs the replacement inside a transaction.
+func ReplaceParticipant(db *sql.DB, fromID, toID int64, dryRun bool) (*model.MaintenanceAffected, error) {
+	const listSQL = `
+		SELECT r.id,
+		       strftime('%d/%m/%Y, %H:%M', r.data_hora) AS data_fmt,
+		       COALESCE((SELECT GROUP_CONCAT(nome, ', ') FROM (SELECT p2.nome FROM participante p2 JOIN reuniao_participante rp2 ON rp2.participante_id = p2.id WHERE rp2.reuniao_id = r.id ORDER BY p2.nome)), '—') AS participantes_nomes
+		FROM reuniao r
+		JOIN reuniao_participante rp ON rp.reuniao_id = r.id
+		WHERE rp.participante_id = ?
+		ORDER BY r.data_hora DESC`
+
+	rows, err := db.Query(listSQL, fromID)
+	if err != nil {
+		return nil, fmt.Errorf("ReplaceParticipant list: %w", err)
+	}
+	defer rows.Close()
+
+	var affected []model.MaintenanceMeeting
+	for rows.Next() {
+		var m model.MaintenanceMeeting
+		if err := rows.Scan(&m.ID, &m.DataFmt, &m.ParticipantesNomes); err != nil {
+			return nil, fmt.Errorf("ReplaceParticipant scan: %w", err)
+		}
+		affected = append(affected, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ReplaceParticipant rows: %w", err)
+	}
+
+	result := &model.MaintenanceAffected{
+		Affected: affected,
+		Count:    len(affected),
+	}
+
+	if dryRun || len(affected) == 0 {
+		return result, nil
+	}
+
+	err = WithTx(db, func(tx *sql.Tx) error {
+		// Remove duplicate links that would conflict after the remap.
+		if _, err := tx.Exec(
+			`DELETE FROM reuniao_participante WHERE participante_id = ? AND reuniao_id IN (SELECT reuniao_id FROM reuniao_participante WHERE participante_id = ?)`,
+			fromID, toID,
+		); err != nil {
+			return fmt.Errorf("ReplaceParticipant delete duplicates: %w", err)
+		}
+		// Remap remaining rows to the target participant.
+		if _, err := tx.Exec(
+			`UPDATE reuniao_participante SET participante_id = ? WHERE participante_id = ?`,
+			toID, fromID,
+		); err != nil {
+			return fmt.Errorf("ReplaceParticipant update: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

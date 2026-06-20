@@ -1,2 +1,0 @@
-ALTER TABLE projeto
-  ADD COLUMN notas TEXT NULL AFTER ativo;

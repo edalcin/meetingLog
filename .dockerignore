@@ -6,15 +6,7 @@ data/
 .env
 .env.*
 *.log
-dash/
-public/
-src/
-scripts/
-tests/
 docs/
-specs/
-.specify
-.claude
 README.md
 .gitignore
 .dockerignore

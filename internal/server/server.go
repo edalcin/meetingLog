@@ -81,6 +81,11 @@ func (s *Server) buildRouter() http.Handler {
 	r.Get("/icons/*", sf.ServeHTTP)
 	r.Get("/css/*", sf.ServeHTTP)
 	r.Get("/js/*", sf.ServeHTTP)
+	r.Get("/manifest.webmanifest", serveFile(root, "manifest.webmanifest"))
+	r.Get("/sw.js", serveFile(root, "sw.js"))
+	r.Get("/favicon.ico", serveFile(root, "favicon.ico"))
+	r.Get("/favicon-16x16.png", serveFile(root, "favicon-16x16.png"))
+	r.Get("/favicon-32x32.png", serveFile(root, "favicon-32x32.png"))
 
 	// Public API endpoints for shared link views (no auth required)
 	r.With(PublicShareCSP).Get("/api/p/{token}", s.handleGetPublicLink())
@@ -98,7 +103,6 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/meetings/{id}", s.handleGetMeeting())
 		r.Post("/api/meetings", s.handleCreateMeeting())
 		r.Put("/api/meetings/{id}", s.handleUpdateMeeting())
-		r.Patch("/api/meetings/{id}/notas", s.handlePatchMeetingNotes())
 		r.Delete("/api/meetings/{id}", s.handleDeleteMeeting())
 
 		// Files (within meetings)
@@ -142,8 +146,13 @@ func (s *Server) buildRouter() http.Handler {
 
 		// Maintenance
 		r.Post("/api/maintenance/replace-project", s.handleReplaceProject())
+		r.Post("/api/maintenance/replace-participant", s.handleReplaceParticipant())
 		r.Get("/api/maintenance/backup", s.handleBackup())
 		r.Post("/api/maintenance/restore", s.handleRestore())
+
+		// Settings
+		r.Get("/api/settings", s.handleGetSettings())
+		r.Put("/api/settings", s.handleUpdateSettings())
 	})
 
 	return r

@@ -41,6 +41,35 @@ func (s *Server) handleReplaceProject() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleReplaceParticipant() http.HandlerFunc {
+	type request struct {
+		FromID int64 `json:"from_id"`
+		ToID   int64 `json:"to_id"`
+		DryRun bool  `json:"dry_run"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "body inválido")
+			return
+		}
+		if req.FromID <= 0 || req.ToID <= 0 {
+			writeError(w, http.StatusBadRequest, "from_id e to_id são obrigatórios")
+			return
+		}
+		if req.FromID == req.ToID {
+			writeError(w, http.StatusBadRequest, "origem e destino devem ser diferentes")
+			return
+		}
+
+		result, err := store.ReplaceParticipant(s.db, req.FromID, req.ToID, req.DryRun)
+		if handleStoreErr(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
 func (s *Server) handleBackup() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dbDir := filepath.Dir(s.cfg.DBPath)

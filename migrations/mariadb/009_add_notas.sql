@@ -1,2 +1,0 @@
-ALTER TABLE reuniao
-  ADD COLUMN notas TEXT NULL AFTER tipo;

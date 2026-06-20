@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { Editor, Extension } from '@tiptap/core'
+  import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import Link from '@tiptap/extension-link'
   import Placeholder from '@tiptap/extension-placeholder'
@@ -20,35 +20,39 @@
   let isOrdered = $derived(tick > 0 && (editor?.isActive('orderedList') ?? false))
 
   onMount(() => {
-    editor = new Editor({
+    let _ed = null  // local ref used by handleKeyDown closure; avoids $state proxy issues
+
+    _ed = new Editor({
       element,
       extensions: [
         StarterKit,
         Link.configure({ openOnClick: false }),
         Placeholder.configure({ placeholder }),
-        Extension.create({
-          name: 'tabHandler',
-          addKeyboardShortcuts() {
-            return {
-              Tab:       () => this.editor.commands.sinkListItem('listItem'),
-              'Shift-Tab': () => this.editor.commands.liftListItem('listItem'),
-            }
-          },
-        }),
       ],
       content,
       editable,
+      editorProps: {
+        handleKeyDown(_view, event) {
+          if (event.key === 'Tab') {
+            event.preventDefault()
+            if (event.shiftKey) {
+              _ed?.commands.liftListItem('listItem')
+            } else {
+              _ed?.commands.sinkListItem('listItem')
+            }
+            return true
+          }
+          return false
+        }
+      },
       onUpdate: ({ editor: ed }) => {
         content = ed.getHTML()
         tick++
       },
-      onSelectionUpdate: () => {
-        tick++
-      },
-      onTransaction: () => {
-        tick++
-      },
+      onSelectionUpdate: () => { tick++ },
+      onTransaction:     () => { tick++ },
     })
+    editor = _ed
   })
 
   onDestroy(() => {

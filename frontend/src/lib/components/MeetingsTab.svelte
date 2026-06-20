@@ -120,6 +120,15 @@
 
   onDestroy(() => observer?.disconnect())
 
+  async function reloadCatalogs() {
+    const [parts, projs] = await Promise.all([
+      api.get('/api/participants?limit=1000').catch(() => ({ data: [] })),
+      api.get('/api/projects?limit=1000').catch(() => ({ data: [] })),
+    ])
+    allParticipants = parts.data ?? []
+    allProjects = projs.data ?? []
+  }
+
   function toggleSort(col) {
     if (sortCol === col) {
       sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'
@@ -199,12 +208,19 @@
     return sortOrder === 'asc' ? '↑' : '↓'
   }
 
+  // Returns resolved list only when ALL ids are found in catalog; null = fall back to string.
   function resolveParticipants(m) {
-    return (m.participante_ids ?? []).map(id => allParticipants.find(p => p.id === id)).filter(Boolean)
+    const ids = m.participante_ids ?? []
+    if (ids.length === 0) return []
+    const resolved = ids.map(id => allParticipants.find(p => p.id === id)).filter(Boolean)
+    return resolved.length === ids.length ? resolved : null
   }
 
   function resolveProjects(m) {
-    return (m.projeto_ids ?? []).map(id => allProjects.find(p => p.id === id)).filter(Boolean)
+    const ids = m.projeto_ids ?? []
+    if (ids.length === 0) return []
+    const resolved = ids.map(id => allProjects.find(p => p.id === id)).filter(Boolean)
+    return resolved.length === ids.length ? resolved : null
   }
 
   function openParticipantInfo(id) {
@@ -352,6 +368,7 @@
             {#each meetings as m}
               {@const partList = resolveParticipants(m)}
               {@const projList = resolveProjects(m)}
+              {@const otherCount = (m.arquivo_count ?? 0) - (m.arquivo_pdf_count ?? 0) - (m.arquivo_img_count ?? 0)}
               <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-4 py-3 text-gray-900 whitespace-nowrap">{formatDate(m.data_hora)}</td>
                 <td class="px-4 py-3">
@@ -360,7 +377,7 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-gray-700 max-w-xs">
-                  {#if partList.length > 0}
+                  {#if partList && partList.length > 0}
                     {#each partList as p, i}
                       <button type="button" class="text-blue-600 hover:underline" onclick={() => openParticipantInfo(p.id)}>{p.nome}</button>{#if i < partList.length - 1}{', '}{/if}
                     {/each}
@@ -369,7 +386,7 @@
                   {/if}
                 </td>
                 <td class="px-4 py-3 text-gray-700 max-w-xs">
-                  {#if projList.length > 0}
+                  {#if projList && projList.length > 0}
                     {#each projList as p, i}
                       <button type="button" class="text-blue-600 hover:underline" onclick={() => openProjectInfo(p.id)}>{p.nome}</button>{#if i < projList.length - 1}{', '}{/if}
                     {/each}
@@ -400,6 +417,14 @@
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
                         <span class="text-xs">{m.arquivo_img_count}</span>
+                      </span>
+                    {/if}
+                    {#if otherCount > 0}
+                      <span title="{otherCount} arquivo(s)" class="flex items-center gap-0.5 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        <span class="text-xs">{otherCount}</span>
                       </span>
                     {/if}
                   </div>
@@ -446,7 +471,7 @@
   <MeetingFormModal
     meeting={editingMeeting}
     onClose={() => showFormModal = false}
-    onSaved={() => { showFormModal = false; reset() }}
+    onSaved={async () => { showFormModal = false; await reloadCatalogs(); reset() }}
   />
 {/if}
 

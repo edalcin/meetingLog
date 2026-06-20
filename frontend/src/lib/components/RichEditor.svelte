@@ -10,6 +10,7 @@
   let element = $state(null)
   let editor = $state(null)
   let tick = $state(0)
+  let _tabHandler = null   // native DOM listener ref for cleanup
 
   let isBold    = $derived(tick > 0 && (editor?.isActive('bold') ?? false))
   let isItalic  = $derived(tick > 0 && (editor?.isActive('italic') ?? false))
@@ -20,7 +21,7 @@
   let isOrdered = $derived(tick > 0 && (editor?.isActive('orderedList') ?? false))
 
   onMount(() => {
-    let _ed = null  // local ref used by handleKeyDown closure; avoids $state proxy issues
+    let _ed = null
 
     _ed = new Editor({
       element,
@@ -31,31 +32,32 @@
       ],
       content,
       editable,
-      editorProps: {
-        handleKeyDown(_view, event) {
-          if (event.key === 'Tab') {
-            event.preventDefault()
-            if (event.shiftKey) {
-              _ed?.commands.liftListItem('listItem')
-            } else {
-              _ed?.commands.sinkListItem('listItem')
-            }
-            return true
-          }
-          return false
-        }
-      },
-      onUpdate: ({ editor: ed }) => {
-        content = ed.getHTML()
-        tick++
-      },
+      onUpdate: ({ editor: ed }) => { content = ed.getHTML(); tick++ },
       onSelectionUpdate: () => { tick++ },
       onTransaction:     () => { tick++ },
     })
     editor = _ed
+
+    // Capture-phase listener on ProseMirror's contenteditable.
+    // Runs before ProseMirror's own bubble listener AND before the browser
+    // acts on Tab (moves focus) — the only reliable interception inside a <form>.
+    if (editable) {
+      _tabHandler = (event) => {
+        if (event.key !== 'Tab') return
+        event.preventDefault()
+        event.stopImmediatePropagation()  // prevent double-dispatch via keymap plugin
+        if (event.shiftKey) {
+          _ed.commands.liftListItem('listItem')
+        } else {
+          _ed.commands.sinkListItem('listItem')
+        }
+      }
+      _ed.view.dom.addEventListener('keydown', _tabHandler, true)
+    }
   })
 
   onDestroy(() => {
+    if (_tabHandler) editor?.view?.dom?.removeEventListener('keydown', _tabHandler, true)
     editor?.destroy()
   })
 

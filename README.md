@@ -1,5 +1,9 @@
 # Registro de Reuniões
 
+<p align="center">
+  <img src="meeting.png" alt="Registro de Reuniões" width="120">
+</p>
+
 Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva. Roda em um único container Docker (~20 MB) com banco de dados SQLite embutido — sem dependências externas.
 
 ## Funcionalidades

@@ -103,6 +103,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/meetings/{id}", s.handleGetMeeting())
 		r.Post("/api/meetings", s.handleCreateMeeting())
 		r.Put("/api/meetings/{id}", s.handleUpdateMeeting())
+		r.Patch("/api/meetings/{id}/notas", s.handlePatchMeetingNotes())
 		r.Delete("/api/meetings/{id}", s.handleDeleteMeeting())
 
 		// Files (within meetings)

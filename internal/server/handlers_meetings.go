@@ -158,6 +158,27 @@ func (s *Server) handleUpdateMeeting() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handlePatchMeetingNotes() http.HandlerFunc {
+	type request struct {
+		Notas *string `json:"notas"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := parseID(w, r)
+		if !ok {
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "body inválido")
+			return
+		}
+		if err := store.UpdateMeetingNotes(s.db, id, req.Notas); handleStoreErr(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
 func (s *Server) handleDeleteMeeting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseID(w, r)

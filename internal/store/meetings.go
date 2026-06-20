@@ -454,6 +454,20 @@ func UpdateMeeting(db *sql.DB, id int64, dataHora, tipo string, notas *string, p
 	return m, rejected, nil
 }
 
+// UpdateMeetingNotes updates only the notas field of a meeting.
+// Returns ErrNotFound when no row matches.
+func UpdateMeetingNotes(db *sql.DB, id int64, notas *string) error {
+	res, err := db.Exec(`UPDATE reuniao SET notas = ? WHERE id = ?`, notas, id)
+	if err != nil {
+		return fmt.Errorf("UpdateMeetingNotes: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // DeleteMeeting removes a meeting. Cascade constraints in the schema handle
 // child rows (participantes, projetos, pautas, links, arquivos).
 // Returns ErrNotFound when no row matches.

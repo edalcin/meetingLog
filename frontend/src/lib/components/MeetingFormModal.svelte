@@ -131,10 +131,20 @@
   })
 
   // ── Autosave ──────────────────────────────────────────────────────────────
+  // Strategy: for EXISTING meetings, only PATCH the notes field — never touch
+  // participants/projects/pautas/links via autosave (prevents silent data loss
+  // if state is incomplete at fire time). For NEW meetings, POST once to create
+  // a draft when the form first becomes valid, then PATCH notes thereafter.
   function currentSig() {
-    return JSON.stringify({ dataHora, tipo, notasHtml, pautas, links,
-                            pi: selectedParticipantIds, pj: selectedProjectIds })
+    return JSON.stringify({ notasHtml })
   }
+
+  // Separate sig for "form has changed enough to create a draft" (new meetings).
+  function draftSig() {
+    return JSON.stringify({ dataHora, tipo, pi: selectedParticipantIds, pj: selectedProjectIds })
+  }
+
+  let lastDraftSig = $state('')
 
   $effect(() => {
     const sig = currentSig()
@@ -146,24 +156,34 @@
   async function autosave() {
     if (validate()) return
     const notas = editorRef?.getHTML() ?? notasHtml
-    const payload = {
-      data_hora: dataHora,
-      tipo,
-      notas,
-      participante_ids: selectedParticipantIds,
-      projeto_ids: selectedProjectIds,
-      pautas: pautas.map(p => p.texto),
-      links: links
-        .filter(l => l.url.trim())
-        .map((l, i) => ({ nome: l.nome.trim() || null, url: l.url.trim(), ordem: i + 1 })),
-    }
     autoStatus = 'saving'
     try {
-      const result = editingId
-        ? await api.put(`/api/meetings/${editingId}`, payload)
-        : await api.post('/api/meetings', payload)
-      if (!editingId) editingId = result?.id ?? editingId
-      if (result?.rejected_urls?.length) rejectedUrls = result.rejected_urls
+      if (!editingId) {
+        // New meeting: create draft with full payload (only once when valid)
+        const ds = draftSig()
+        if (ds === lastDraftSig) {
+          // Form structure unchanged since last draft — only PATCH notes if we have an id
+          autoStatus = ''
+          return
+        }
+        const payload = {
+          data_hora: dataHora,
+          tipo,
+          notas,
+          participante_ids: selectedParticipantIds,
+          projeto_ids: selectedProjectIds,
+          pautas: pautas.map(p => p.texto),
+          links: links.filter(l => l.url.trim())
+            .map((l, i) => ({ nome: l.nome.trim() || null, url: l.url.trim(), ordem: i + 1 })),
+        }
+        const result = await api.post('/api/meetings', payload)
+        editingId = result?.id ?? null
+        if (result?.rejected_urls?.length) rejectedUrls = result.rejected_urls
+        lastDraftSig = ds
+      } else {
+        // Existing meeting: PATCH notes only — never touch participants/projects/etc.
+        await api.patch(`/api/meetings/${editingId}/notas`, { notas })
+      }
       lastSavedSig = currentSig()
       autoStatus = 'saved'
     } catch {

@@ -155,6 +155,18 @@ func (s *Server) handleRestore() http.HandlerFunc {
 			return
 		}
 
+		// Validate the restored database BEFORE replacing production.
+		// store.Open runs WAL pragma, schema, and backfill — a full structural check.
+		testDB, err := store.Open(tmpPath)
+		if err != nil {
+			os.Remove(tmpPath)
+			log.Printf("handleRestore validate tmpDB: %v", err)
+			writeError(w, http.StatusBadRequest, "banco de dados inválido ou corrompido")
+			return
+		}
+		testDB.Close()
+		store.RemoveWALSidecars(tmpPath) // clean up WAL sidecars from the validation open
+
 		// Atomically replace the production database file.
 		if err := os.Rename(tmpPath, s.cfg.DBPath); err != nil {
 			os.Remove(tmpPath)

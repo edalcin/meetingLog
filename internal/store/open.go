@@ -170,3 +170,7 @@ func tryRemoveWALSidecars(dbPath string) bool {
 	}
 	return removed
 }
+
+// RemoveWALSidecars removes WAL/SHM sidecar files after a connection is closed.
+// Used by the restore handler to clean up temp DB sidecars before rename.
+func RemoveWALSidecars(dbPath string) { tryRemoveWALSidecars(dbPath) }

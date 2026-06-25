@@ -42,6 +42,7 @@
   let pendingFiles = $state([])
   let fileInputRef = $state(null)
   let fileError = $state('')
+  let existingFiles = $state([])
 
   // RichEditor ref
   let editorRef = $state(null)
@@ -91,9 +92,11 @@
       api.get('/api/projects?limit=500').catch(() => ({ data: [] })),
       meeting?.id ? api.get(`/api/meetings/${meeting.id}`) : Promise.resolve(null),
       api.get('/api/settings').catch(() => ({ autosave_interval_seconds: 5 })),
+      meeting?.id ? api.get(`/api/meetings/${meeting.id}/files`).catch(() => []) : Promise.resolve([]),
     ]
-    const [parts, projs, detail, settings] = await Promise.all(fetches)
+    const [parts, projs, detail, settings, filesData] = await Promise.all(fetches)
     autosaveDelayMs = (settings?.autosave_interval_seconds ?? 5) * 1000
+    existingFiles = Array.isArray(filesData) ? filesData : []
     allParticipants = parts.data ?? []
     allProjects = projs.data ?? []
 
@@ -299,6 +302,15 @@
 
   function removePendingFile(i) {
     pendingFiles = pendingFiles.filter((_, idx) => idx !== i)
+  }
+
+  async function deleteFile(fileId) {
+    try {
+      await api.del(`/api/files/${fileId}`)
+      existingFiles = existingFiles.filter(f => f.id !== fileId)
+    } catch (e) {
+      error = `Erro ao deletar arquivo: ${e.message}`
+    }
   }
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -552,16 +564,42 @@
               </button>
             </div>
 
-            <!-- Arquivos -->
+            <!-- Arquivos (somente em modo edição) -->
+            {#if editingId}
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Arquivos</label>
 
-              <!-- Pending files list -->
+              <!-- Existing files -->
+              {#if existingFiles.length > 0}
+                <div class="space-y-1 mb-2">
+                  {#each existingFiles as file}
+                    <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5">
+                      <span class="text-xs font-medium text-gray-500 uppercase w-10 shrink-0">
+                        {file.filename_original.split('.').pop()}
+                      </span>
+                      <a
+                        href="/api/files/{file.id}/content"
+                        target="_blank"
+                        class="flex-1 text-sm text-blue-700 hover:underline truncate"
+                        title={file.filename_original}
+                      >{file.filename_original}</a>
+                      <button
+                        type="button"
+                        onclick={() => deleteFile(file.id)}
+                        title="Deletar arquivo"
+                        class="p-0.5 text-gray-400 hover:text-red-600 rounded shrink-0"
+                      >×</button>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
+              <!-- Pending new files -->
               {#if pendingFiles.length > 0}
                 <div class="space-y-1 mb-2">
                   {#each pendingFiles as file, i}
-                    <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5">
-                      <span class="text-xs font-medium text-gray-500 uppercase w-10 shrink-0">
+                    <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5">
+                      <span class="text-xs font-medium text-blue-400 uppercase w-10 shrink-0">
                         {file.name.split('.').pop()}
                       </span>
                       <span class="flex-1 text-sm text-gray-800 truncate" title={file.name}>{file.name}</span>
@@ -598,6 +636,7 @@
                 <p class="mt-1 text-xs text-red-600">{fileError}</p>
               {/if}
             </div>
+            {/if}
 
           </div>
 

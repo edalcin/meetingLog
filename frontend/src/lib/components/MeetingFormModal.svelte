@@ -77,6 +77,11 @@
     !allParticipants.some(p => p.nome.toLowerCase() === partSearch.trim().toLowerCase())
   )
 
+  let showCreateProject = $derived(
+    projSearch.trim().length >= 2 &&
+    !allProjects.some(p => p.nome.toLowerCase() === projSearch.trim().toLowerCase())
+  )
+
   // ── Init ─────────────────────────────────────────────────────────────────
   onMount(async () => {
     // Fetch catalogs + (if editing) full meeting detail in parallel.
@@ -236,6 +241,20 @@
     selectedProjectIds = [...selectedProjectIds, p.id]
     projSearch = ''
     showProjDropdown = false
+  }
+
+  async function createProject() {
+    const nome = projSearch.trim()
+    if (!nome) return
+    try {
+      const created = await api.post('/api/projects', { nome, ativo: true })
+      allProjects = [...allProjects, created]
+      selectedProjectIds = [...selectedProjectIds, created.id]
+      projSearch = ''
+      showProjDropdown = false
+    } catch (e) {
+      error = `Erro ao criar projeto: ${e.message}`
+    }
   }
 
   function removeProject(id) {
@@ -682,7 +701,7 @@
                   placeholder="Buscar projeto..."
                   class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {#if showProjDropdown && filteredProjects.length > 0}
+                {#if showProjDropdown && (filteredProjects.length > 0 || showCreateProject)}
                   <div class="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {#each filteredProjects as p}
                       <button
@@ -693,6 +712,15 @@
                         {p.nome}
                       </button>
                     {/each}
+                    {#if showCreateProject}
+                      <button
+                        type="button"
+                        onmousedown={createProject}
+                        class="w-full text-left px-3 py-2 text-sm text-purple-600 hover:bg-purple-50 border-t border-gray-100 font-medium"
+                      >
+                        + Criar projeto "{projSearch.trim()}"
+                      </button>
+                    {/if}
                   </div>
                 {/if}
               </div>

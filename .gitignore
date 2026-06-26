@@ -16,3 +16,4 @@ Thumbs.db
 *.exe
 *.exe~
 data/
+graphify-out/

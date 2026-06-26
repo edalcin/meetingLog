@@ -1,1 +1,0 @@
-{"nodes": [{"id": "internal_server_assets", "label": "Assets", "file_type": "code", "source_file": "internal/server/assets.go"}], "edges": [{"source": "internal_server_assets", "target": "frontend_app", "relation": "references", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "internal/server/assets.go"}], "hyperedges": []}

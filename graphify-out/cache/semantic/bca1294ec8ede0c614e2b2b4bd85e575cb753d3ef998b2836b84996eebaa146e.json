@@ -1,0 +1,1 @@
+{"nodes": [{"id": "internal_thumbnail", "label": "Thumbnail Generator", "file_type": "code", "source_file": "internal/thumbnail/thumbnail.go"}], "edges": [{"source": "internal_thumbnail", "target": "pdf_icon_png", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "internal/thumbnail/thumbnail.go"}], "hyperedges": []}

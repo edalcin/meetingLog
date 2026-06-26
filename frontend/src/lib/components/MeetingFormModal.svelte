@@ -58,19 +58,27 @@
 
   // ── Derived filtered lists ────────────────────────────────────────────────
   let filteredParticipants = $derived(
-    allParticipants.filter(p =>
-      p.ativo !== false &&
-      !selectedParticipantIds.includes(p.id) &&
-      (p.nome.toLowerCase().includes(partSearch.toLowerCase()) ||
-       (p.instituicao ?? '').toLowerCase().includes(partSearch.toLowerCase()))
-    ).slice(0, 10)
+    (() => {
+      const s = partSearch.toLowerCase()
+      const ok = p =>
+        !selectedParticipantIds.includes(p.id) &&
+        (p.nome.toLowerCase().includes(s) || (p.instituicao ?? '').toLowerCase().includes(s))
+      return [
+        ...allParticipants.filter(p => p.ativo  && ok(p)).slice(0, 10),
+        ...allParticipants.filter(p => !p.ativo && ok(p)).slice(0, 5),
+      ]
+    })()
   )
 
   let filteredProjects = $derived(
-    allProjects.filter(p =>
-      !selectedProjectIds.includes(p.id) &&
-      p.nome.toLowerCase().includes(projSearch.toLowerCase())
-    ).slice(0, 10)
+    (() => {
+      const s = projSearch.toLowerCase()
+      const ok = p => !selectedProjectIds.includes(p.id) && p.nome.toLowerCase().includes(s)
+      return [
+        ...allProjects.filter(p => p.ativo  && ok(p)).slice(0, 10),
+        ...allProjects.filter(p => !p.ativo && ok(p)).slice(0, 5),
+      ]
+    })()
   )
 
   let showCreateParticipant = $derived(
@@ -215,7 +223,17 @@
   }
 
   // ── Participants ──────────────────────────────────────────────────────────
-  function addParticipant(p) {
+  async function addParticipant(p) {
+    if (!p.ativo) {
+      if (!window.confirm(`Reativar participante "${p.nome}"?`)) return
+      try {
+        await api.patch(`/api/participants/${p.id}`, { ativo: true })
+        allParticipants = allParticipants.map(x => x.id === p.id ? { ...x, ativo: true } : x)
+      } catch (e) {
+        error = `Erro ao reativar participante: ${e.message}`
+        return
+      }
+    }
     selectedParticipantIds = [...selectedParticipantIds, p.id]
     partSearch = ''
     showPartDropdown = false
@@ -240,7 +258,17 @@
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
-  function addProject(p) {
+  async function addProject(p) {
+    if (!p.ativo) {
+      if (!window.confirm(`Reativar projeto "${p.nome}"?`)) return
+      try {
+        await api.patch(`/api/projects/${p.id}`, { ativo: true })
+        allProjects = allProjects.map(x => x.id === p.id ? { ...x, ativo: true } : x)
+      } catch (e) {
+        error = `Erro ao reativar projeto: ${e.message}`
+        return
+      }
+    }
     selectedProjectIds = [...selectedProjectIds, p.id]
     projSearch = ''
     showProjDropdown = false
@@ -687,11 +715,11 @@
                       <button
                         type="button"
                         onmousedown={() => addParticipant(p)}
-                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between"
+                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between {p.ativo ? '' : 'text-gray-400 italic'}"
                       >
-                        <span>{p.nome}</span>
+                        <span>{p.nome}{p.ativo ? '' : ' (inativo)'}</span>
                         {#if p.instituicao}
-                          <span class="text-xs text-gray-400">{p.instituicao}</span>
+                          <span class="text-xs {p.ativo ? 'text-gray-400' : 'text-gray-300'}">{p.instituicao}</span>
                         {/if}
                       </button>
                     {/each}
@@ -746,9 +774,9 @@
                       <button
                         type="button"
                         onmousedown={() => addProject(p)}
-                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 {p.ativo ? '' : 'text-gray-400 italic'}"
                       >
-                        {p.nome}
+                        {p.nome}{p.ativo ? '' : ' (inativo)'}
                       </button>
                     {/each}
                     {#if showCreateProject}

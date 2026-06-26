@@ -266,6 +266,27 @@ func DeleteParticipant(db *sql.DB, id int64) error {
 	return nil
 }
 
+// PatchParticipantAtivo updates only the ativo and ativo_manual fields.
+// Returns ErrNotFound if the id does not exist.
+func PatchParticipantAtivo(db *sql.DB, id int64, ativo bool) (*model.Participant, error) {
+	ativoInt := 0
+	if ativo {
+		ativoInt = 1
+	}
+	res, err := db.Exec(
+		`UPDATE participante SET ativo=?, ativo_manual=? WHERE id=?`,
+		ativoInt, ativoInt, id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("PatchParticipantAtivo: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, ErrNotFound
+	}
+	return GetParticipant(db, id)
+}
+
 // ReplaceParticipant substitutes fromID with toID in all meetings.
 // When dryRun is false, runs the replacement inside a transaction.
 func ReplaceParticipant(db *sql.DB, fromID, toID int64, dryRun bool) (*model.MaintenanceAffected, error) {

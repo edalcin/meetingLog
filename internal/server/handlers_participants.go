@@ -114,6 +114,28 @@ func (s *Server) handleUpdateParticipant() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handlePatchParticipant() http.HandlerFunc {
+	type request struct {
+		Ativo *bool `json:"ativo"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := parseID(w, r)
+		if !ok {
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Ativo == nil {
+			writeError(w, http.StatusBadRequest, "body inválido")
+			return
+		}
+		p, err := store.PatchParticipantAtivo(s.db, id, *req.Ativo)
+		if handleStoreErr(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+	}
+}
+
 func (s *Server) handleDeleteParticipant() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseID(w, r)

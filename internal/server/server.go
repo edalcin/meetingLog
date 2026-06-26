@@ -120,6 +120,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/participants", s.handleCreateParticipant())
 		r.Get("/api/participants/{id}", s.handleGetParticipant())
 		r.Put("/api/participants/{id}", s.handleUpdateParticipant())
+		r.Patch("/api/participants/{id}", s.handlePatchParticipant())
 		r.Delete("/api/participants/{id}", s.handleDeleteParticipant())
 
 		// Projects
@@ -127,6 +128,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/projects", s.handleCreateProject())
 		r.Get("/api/projects/{id}/detail", s.handleGetProjectDetail())
 		r.Put("/api/projects/{id}", s.handleUpdateProject())
+		r.Patch("/api/projects/{id}", s.handlePatchProject())
 		r.Delete("/api/projects/{id}", s.handleDeleteProject())
 
 		// Institutions

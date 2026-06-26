@@ -483,6 +483,24 @@ func ReplaceProject(db *sql.DB, fromID, toID int64, dryRun bool) (*model.Mainten
 	return result, nil
 }
 
+// PatchProjectAtivo updates only the ativo field.
+// Returns ErrNotFound if the id does not exist.
+func PatchProjectAtivo(db *sql.DB, id int64, ativo bool) (*model.Project, error) {
+	ativoInt := 0
+	if ativo {
+		ativoInt = 1
+	}
+	res, err := db.Exec(`UPDATE projeto SET ativo=? WHERE id=?`, ativoInt, id)
+	if err != nil {
+		return nil, fmt.Errorf("PatchProjectAtivo: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, ErrNotFound
+	}
+	return fetchProjectByID(db, id)
+}
+
 // isUniqueConstraintError reports whether err is a SQLite UNIQUE constraint violation.
 func isUniqueConstraintError(err error) bool {
 	if err == nil {

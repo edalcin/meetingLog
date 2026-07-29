@@ -567,13 +567,13 @@
                       type="text"
                       bind:value={link.nome}
                       placeholder="Nome (opcional)"
-                      class="w-28 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      class="flex-[2] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="url"
                       bind:value={link.url}
                       placeholder="https://..."
-                      class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      class="flex-[3] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {#if link.url.startsWith('http')}
                       <a

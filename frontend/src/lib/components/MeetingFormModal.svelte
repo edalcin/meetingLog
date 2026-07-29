@@ -426,6 +426,10 @@
     }
   }
 
+  function handleKeydownLink(e) {
+    if (e.key === 'Enter') e.preventDefault()
+  }
+
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) handleClose()
   }
@@ -567,12 +571,14 @@
                       type="text"
                       bind:value={link.nome}
                       placeholder="Nome (opcional)"
+                      onkeydown={handleKeydownLink}
                       class="flex-[2] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="url"
                       bind:value={link.url}
                       placeholder="https://..."
+                      onkeydown={handleKeydownLink}
                       class="flex-[3] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {#if link.url.startsWith('http')}

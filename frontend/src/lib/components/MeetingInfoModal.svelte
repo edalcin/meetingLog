@@ -39,6 +39,8 @@
       PNG: 'bg-green-100 text-green-700',
       JPG: 'bg-yellow-100 text-yellow-700',
       JPEG: 'bg-yellow-100 text-yellow-700',
+      TXT: 'bg-gray-200 text-gray-700',
+      MD: 'bg-indigo-100 text-indigo-700',
     }
     return { ext, color: colors[ext] ?? 'bg-gray-100 text-gray-700' }
   }
@@ -319,6 +321,17 @@
                           d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                       </svg>
                     </button>
+                    <a
+                      href="/api/files/{file.id}/content"
+                      download={file.filename_original}
+                      title="Baixar"
+                      class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+                      </svg>
+                    </a>
                     <button
                       type="button"
                       onclick={() => deleteFile(file.id)}
@@ -341,7 +354,7 @@
             <input
               type="file"
               bind:this={fileInput}
-              accept="image/png,image/jpeg,application/pdf"
+              accept="image/png,image/jpeg,application/pdf,.txt,.md,text/plain,text/markdown"
               multiple
               class="flex-1 text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
             />
@@ -406,7 +419,7 @@
     </div>
 
     <!-- Content -->
-    {#if viewingFile.mime_type === 'application/pdf'}
+    {#if viewingFile.mime_type === 'application/pdf' || viewingFile.mime_type === 'text/plain' || viewingFile.mime_type === 'text/markdown'}
       <iframe
         src="/api/files/{viewingFile.id}/content"
         title={viewingFile.filename_original}
@@ -414,7 +427,7 @@
         style="height: 85vh"
         onclick={(e) => e.stopPropagation()}
       ></iframe>
-    {:else}
+    {:else if viewingFile.mime_type?.startsWith('image/')}
       <img
         src="/api/files/{viewingFile.id}/content"
         alt={viewingFile.filename_original}
@@ -422,6 +435,8 @@
         style="max-height: 85vh"
         onclick={(e) => e.stopPropagation()}
       />
+    {:else}
+      <div class="text-white text-sm bg-black/40 rounded px-4 py-3">Visualização não disponível para este tipo de arquivo.</div>
     {/if}
   </div>
 {/if}

@@ -97,7 +97,11 @@ func (s *Server) handleFileContent() http.HandlerFunc {
 		}
 		defer f.Close()
 
-		w.Header().Set("Content-Type", mimeType)
+		contentType := mimeType
+		if mimeType == "text/plain" || mimeType == "text/markdown" {
+			contentType += "; charset=utf-8"
+		}
+		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, storedName))
 		http.ServeContent(w, r, storedName, time.Time{}, f)
 	}
@@ -227,6 +231,10 @@ func detectMime(data []byte, originalFilename string) (mimeType, ext string) {
 		return "image/png", ".png"
 	case ".pdf":
 		return "application/pdf", ".pdf"
+	case ".txt":
+		return "text/plain", ".txt"
+	case ".md":
+		return "text/markdown", ".md"
 	}
 	return "application/octet-stream", e
 }

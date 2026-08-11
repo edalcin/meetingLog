@@ -630,6 +630,12 @@
                         class="flex-1 text-sm text-blue-700 hover:underline truncate"
                         title={file.filename_original}
                       >{file.filename_original}</a>
+                      <a
+                        href="/api/files/{file.id}/content"
+                        download={file.filename_original}
+                        title="Baixar arquivo"
+                        class="p-0.5 text-gray-400 hover:text-blue-600 rounded shrink-0"
+                      >⬇</a>
                       <button
                         type="button"
                         onclick={() => deleteFile(file.id)}
@@ -665,7 +671,7 @@
               <input
                 type="file"
                 bind:this={fileInputRef}
-                accept="image/png,image/jpeg,application/pdf"
+                accept="image/png,image/jpeg,application/pdf,.txt,.md,text/plain,text/markdown"
                 multiple
                 class="hidden"
                 onchange={handleFileSelect}

@@ -92,7 +92,15 @@ func Open(dbPath string) (*sql.DB, error) {
 	// compatibility. Idempotent — already-HTML values are not re-converted.
 	if err := backfillDeltaToHTML(db); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("store.Open delta backfill: %w", err)
+		return nil, fmt.Errorf("store.Open: backfillDeltaToHTML: %w", err)
+	}
+
+	// Data migration: fix mime_type for .txt/.md attachments uploaded before
+	// text-attachment support existed (stored as application/octet-stream).
+	// Idempotent — only touches rows still carrying the stale generic type.
+	if err := backfillTextMimeTypes(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open: backfillTextMimeTypes: %w", err)
 	}
 
 	return db, nil
@@ -153,6 +161,34 @@ func backfillDeltaToHTML(db *sql.DB) error {
 
 	if total > 0 {
 		log.Printf("store: converted %d Quill Delta notes to HTML", total)
+	}
+	return nil
+}
+
+// backfillTextMimeTypes fixes mime_type for .txt/.md attachments uploaded
+// before text-attachment support existed, where they were stored generically
+// as application/octet-stream. Idempotent — matches only that stale value.
+func backfillTextMimeTypes(db *sql.DB) error {
+	res, err := db.Exec(`
+		UPDATE arquivo SET mime_type = 'text/plain'
+		WHERE mime_type = 'application/octet-stream'
+		  AND lower(filename_original) LIKE '%.txt'`)
+	if err != nil {
+		return fmt.Errorf("backfillTextMimeTypes txt: %w", err)
+	}
+	nTxt, _ := res.RowsAffected()
+
+	res, err = db.Exec(`
+		UPDATE arquivo SET mime_type = 'text/markdown'
+		WHERE mime_type = 'application/octet-stream'
+		  AND lower(filename_original) LIKE '%.md'`)
+	if err != nil {
+		return fmt.Errorf("backfillTextMimeTypes md: %w", err)
+	}
+	nMd, _ := res.RowsAffected()
+
+	if nTxt+nMd > 0 {
+		log.Printf("store: backfilled mime_type for %d .txt and %d .md attachment(s)", nTxt, nMd)
 	}
 	return nil
 }

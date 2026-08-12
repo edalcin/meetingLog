@@ -20,6 +20,9 @@
 
   // Links: [{nome, url}]
   let links = $state([])
+  let novoLinkNome = $state('')
+  let novoLinkUrl = $state('')
+  let linkError = $state('')
 
   // Participants
   let allParticipants = $state([])
@@ -314,11 +317,28 @@
 
   // ── Links ─────────────────────────────────────────────────────────────────
   function addLink() {
-    links = [...links, { nome: '', url: '' }]
+    const url = novoLinkUrl.trim()
+    if (!url) return
+    if (!url.startsWith('http')) {
+      linkError = `URL inválida: "${url}". Use http:// ou https://.`
+      return
+    }
+    linkError = ''
+    links = [...links, { nome: novoLinkNome.trim(), url }]
+    novoLinkNome = ''
+    novoLinkUrl = ''
   }
 
   function removeLink(i) {
     links = links.filter((_, idx) => idx !== i)
+  }
+
+  function moveLink(i, dir) {
+    const j = i + dir
+    if (j < 0 || j >= links.length) return
+    const arr = [...links]
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    links = arr
   }
 
   // ── Files ─────────────────────────────────────────────────────────────────
@@ -427,7 +447,10 @@
   }
 
   function handleKeydownLink(e) {
-    if (e.key === 'Enter') e.preventDefault()
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addLink()
+    }
   }
 
   function handleOverlayClick(e) {
@@ -564,51 +587,66 @@
             <!-- Links -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Links</label>
-              <div class="space-y-2 mb-2">
+              <div class="space-y-1 mb-2">
                 {#each links as link, i}
-                  <div class="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      bind:value={link.nome}
-                      placeholder="Nome (opcional)"
-                      onkeydown={handleKeydownLink}
-                      class="flex-[2] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="url"
-                      bind:value={link.url}
-                      placeholder="https://..."
-                      onkeydown={handleKeydownLink}
-                      class="flex-[3] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {#if link.url.startsWith('http')}
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Abrir link"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                        </svg>
-                      </a>
-                    {/if}
+                  <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                    <span class="text-xs text-gray-400 font-mono w-5 text-center">{i + 1}</span>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex-1 min-w-0 truncate text-sm text-blue-600 hover:underline"
+                      title={link.url}
+                    >{link.nome || link.url}</a>
+                    <button
+                      type="button"
+                      onclick={() => moveLink(i, -1)}
+                      disabled={i === 0}
+                      title="Mover para cima"
+                      class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded"
+                    >↑</button>
+                    <button
+                      type="button"
+                      onclick={() => moveLink(i, 1)}
+                      disabled={i === links.length - 1}
+                      title="Mover para baixo"
+                      class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded"
+                    >↓</button>
                     <button
                       type="button"
                       onclick={() => removeLink(i)}
-                      class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Remover"
+                      class="p-0.5 text-gray-400 hover:text-red-600 rounded ml-1"
                     >×</button>
                   </div>
                 {/each}
               </div>
-              <button
-                type="button"
-                onclick={addLink}
-                class="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                + Adicionar link
-              </button>
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  bind:value={novoLinkNome}
+                  onkeydown={handleKeydownLink}
+                  placeholder="Nome (opcional)"
+                  class="flex-[2] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="url"
+                  bind:value={novoLinkUrl}
+                  onkeydown={handleKeydownLink}
+                  placeholder="https://..."
+                  class="flex-[3] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onclick={addLink}
+                  class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Adicionar
+                </button>
+              </div>
+              {#if linkError}
+                <p class="mt-1 text-xs text-red-600">{linkError}</p>
+              {/if}
             </div>
 
             <!-- Arquivos (somente em modo edição) -->

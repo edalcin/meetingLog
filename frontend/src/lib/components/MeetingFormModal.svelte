@@ -341,6 +341,43 @@
     links = arr
   }
 
+  let editingLinkIndex = $state(null)
+  let editLinkNome = $state('')
+  let editLinkUrl = $state('')
+
+  function startEditLink(i) {
+    editingLinkIndex = i
+    editLinkNome = links[i].nome
+    editLinkUrl = links[i].url
+    linkError = ''
+  }
+
+  function cancelEditLink() {
+    editingLinkIndex = null
+  }
+
+  function saveEditLink() {
+    const url = editLinkUrl.trim()
+    if (!url) return
+    if (!url.startsWith('http')) {
+      linkError = `URL inválida: "${url}". Use http:// ou https://.`
+      return
+    }
+    linkError = ''
+    links = links.map((l, idx) => idx === editingLinkIndex ? { nome: editLinkNome.trim(), url } : l)
+    editingLinkIndex = null
+  }
+
+  function handleKeydownEditLink(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveEditLink()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      cancelEditLink()
+    }
+  }
+
   // ── Files ─────────────────────────────────────────────────────────────────
   function handleFileSelect() {
     if (!fileInputRef?.files?.length) return
@@ -589,36 +626,73 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Links</label>
               <div class="space-y-1 mb-2">
                 {#each links as link, i}
-                  <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
-                    <span class="text-xs text-gray-400 font-mono w-5 text-center">{i + 1}</span>
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="flex-1 min-w-0 truncate text-sm text-blue-600 hover:underline"
-                      title={link.url}
-                    >{link.nome || link.url}</a>
-                    <button
-                      type="button"
-                      onclick={() => moveLink(i, -1)}
-                      disabled={i === 0}
-                      title="Mover para cima"
-                      class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded"
-                    >↑</button>
-                    <button
-                      type="button"
-                      onclick={() => moveLink(i, 1)}
-                      disabled={i === links.length - 1}
-                      title="Mover para baixo"
-                      class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded"
-                    >↓</button>
-                    <button
-                      type="button"
-                      onclick={() => removeLink(i)}
-                      title="Remover"
-                      class="p-0.5 text-gray-400 hover:text-red-600 rounded ml-1"
-                    >×</button>
-                  </div>
+                  {#if editingLinkIndex === i}
+                    <div class="flex gap-2 items-center bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5">
+                      <input
+                        type="text"
+                        bind:value={editLinkNome}
+                        onkeydown={handleKeydownEditLink}
+                        placeholder="Nome (opcional)"
+                        class="flex-[2] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <input
+                        type="url"
+                        bind:value={editLinkUrl}
+                        onkeydown={handleKeydownEditLink}
+                        placeholder="https://..."
+                        class="flex-[3] min-w-0 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onclick={saveEditLink}
+                        title="Salvar"
+                        class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      >✓</button>
+                      <button
+                        type="button"
+                        onclick={cancelEditLink}
+                        title="Cancelar"
+                        class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >×</button>
+                    </div>
+                  {:else}
+                    <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                      <span class="text-xs text-gray-400 font-mono w-5 text-center">{i + 1}</span>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex-1 min-w-0 truncate text-sm text-blue-600 hover:underline"
+                        title={link.url}
+                      >{link.nome || link.url}</a>
+                      <button
+                        type="button"
+                        onclick={() => startEditLink(i)}
+                        title="Editar"
+                        class="p-0.5 text-gray-400 hover:text-blue-600 rounded"
+                      >✎</button>
+                      <button
+                        type="button"
+                        onclick={() => moveLink(i, -1)}
+                        disabled={i === 0}
+                        title="Mover para cima"
+                        class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded"
+                      >↑</button>
+                      <button
+                        type="button"
+                        onclick={() => moveLink(i, 1)}
+                        disabled={i === links.length - 1}
+                        title="Mover para baixo"
+                        class="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded"
+                      >↓</button>
+                      <button
+                        type="button"
+                        onclick={() => removeLink(i)}
+                        title="Remover"
+                        class="p-0.5 text-gray-400 hover:text-red-600 rounded ml-1"
+                      >×</button>
+                    </div>
+                  {/if}
                 {/each}
               </div>
               <div class="flex gap-2">

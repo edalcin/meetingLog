@@ -2,8 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
-  import Link from '@tiptap/extension-link'
-  import Placeholder from '@tiptap/extension-placeholder'
+  import { Placeholder } from '@tiptap/extensions'
 
   let { content = $bindable(''), editable = true, placeholder = 'Digite aqui...', fill = false } = $props()
 
@@ -26,8 +25,7 @@
     _ed = new Editor({
       element,
       extensions: [
-        StarterKit,
-        Link.configure({ openOnClick: false }),
+        StarterKit.configure({ link: { openOnClick: false } }),
         Placeholder.configure({ placeholder }),
       ],
       content,

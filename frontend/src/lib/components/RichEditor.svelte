@@ -3,6 +3,11 @@
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import { Placeholder } from '@tiptap/extensions'
+  import { Markdown } from '@tiptap/markdown'
+  import { TableKit } from '@tiptap/extension-table'
+  import { TaskList, TaskItem } from '@tiptap/extension-list'
+
+  const MAX_MD_BYTES = 1024 * 1024
 
   let { content = $bindable(''), editable = true, placeholder = 'Digite aqui...', fill = false } = $props()
 
@@ -10,6 +15,9 @@
   let editor = $state(null)
   let tick = $state(0)
   let _tabHandler = null   // native DOM listener ref for cleanup
+  let fileInput = $state(null)
+  let importError = $state('')
+  let hasFocused = false   // cursor position only meaningful after the user has focused the editor
 
   let isBold    = $derived(tick > 0 && (editor?.isActive('bold') ?? false))
   let isItalic  = $derived(tick > 0 && (editor?.isActive('italic') ?? false))
@@ -27,11 +35,16 @@
       extensions: [
         StarterKit.configure({ link: { openOnClick: false } }),
         Placeholder.configure({ placeholder }),
+        TableKit.configure({ table: { resizable: false } }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        Markdown,
       ],
       content,
       editable,
       onUpdate: ({ editor: ed }) => { content = ed.getHTML(); tick++ },
       onSelectionUpdate: () => { tick++ },
+      onFocus:           () => { hasFocused = true },
       onTransaction:     () => { tick++ },
     })
     editor = _ed
@@ -61,6 +74,19 @@
 
   export function getHTML() { return editor?.getHTML() ?? '' }
   export function setContent(html) { editor?.commands.setContent(html) }
+
+  async function importMarkdown(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    importError = ''
+    if (!file || !editor) return
+    if (!/\.(md|markdown)$/i.test(file.name)) { importError = 'Arquivo deve ser .md ou .markdown'; return }
+    if (file.size > MAX_MD_BYTES) { importError = 'Arquivo maior que 1 MB'; return }
+    const md = await file.text()   // UTF-8 decode; strips BOM
+    const opts = { contentType: 'markdown' }
+    if (hasFocused) editor.chain().focus().insertContent(md, opts).run()
+    else editor.chain().insertContentAt(editor.state.doc.content.size, md, opts).focus('end').run()
+  }
 </script>
 
 <div class="{editable ? 'border border-gray-300 rounded-lg overflow-hidden bg-white' : ''} {fill ? 'flex flex-col flex-1 min-h-0' : ''}">
@@ -89,6 +115,13 @@
       <button type="button"
         onclick={() => editor?.chain().focus().toggleOrderedList().run()}
         class="px-2 py-1 text-xs rounded hover:bg-gray-200 transition-colors {isOrdered ? 'bg-gray-200' : ''}">1. Lista</button>
+      <div class="w-px bg-gray-300 mx-1"></div>
+      <button type="button"
+        onclick={() => fileInput?.click()}
+        title="Inserir o conteúdo de um arquivo Markdown nas Notas"
+        class="px-2 py-1 text-xs rounded hover:bg-gray-200 transition-colors">Importar Markdown</button>
+      <input type="file" bind:this={fileInput} accept=".md,.markdown,text/markdown" class="hidden" onchange={importMarkdown} />
+      {#if importError}<span class="self-center text-xs text-red-600">{importError}</span>{/if}
     </div>
   {/if}
   <div bind:this={element} class="{editable ? 'p-3' : 'prose-viewer p-0'} {fill ? 'flex-1 overflow-y-auto min-h-0' : 'min-h-[80px]'}"></div>

@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@tiptap/core": "^3.31.1",
+    "@tiptap/extension-list": "^3.31.1",
+    "@tiptap/extension-table": "^3.31.1",
     "@tiptap/extensions": "^3.31.1",
+    "@tiptap/markdown": "^3.31.1",
     "@tiptap/starter-kit": "^3.31.1",
     "chart.js": "^4.4.9"
   },

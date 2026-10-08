@@ -62,7 +62,7 @@ frontend/                       # Svelte 5 + Vite (npm run build → internal/se
       MaintenanceTab.svelte        # Compõe ReplaceEntitySection × 2 + Configurações
       ReplaceEntitySection.svelte  # Substituição genérica de entidade (projetos ou participantes)
       SharedView.svelte
-      RichEditor.svelte
+      RichEditor.svelte            # TipTap + TableKit + TaskList + @tiptap/markdown; botão Importar Markdown
   public/
     manifest.webmanifest          # PWA manifest com ícones 192/512
     sw.js                         # Service worker: network-first nav + SWR assets
@@ -148,6 +148,13 @@ Executado automaticamente em `store.Open` na primeira inicialização. Converte 
 - Não inclui upload de arquivos — apenas o payload JSON da reunião
 - `handleClose()` faz flush antes de fechar o modal
 - Endpoint `PATCH /api/meetings/{id}/notas` removido (sem consumidores)
+
+## Importar Markdown (RichEditor)
+
+- Botão na toolbar lê `.md`/`.markdown` no browser (≤1 MB, UTF-8, BOM removido) e faz `insertContent(md, { contentType: 'markdown' })` no cursor; sem foco prévio, insere no fim
+- Notas continuam armazenadas como **HTML**; Markdown é só formato de entrada. Auto-save/PUT existentes persistem o resultado
+- Segurança: renderização sempre passa pelo schema do TipTap (HTML cru do `.md` é descartado). O servidor não sanitiza Notas (bluemonday só no backfill Delta→HTML); Notas não aparecem no link público
+- Pacotes `@tiptap/*` devem ter a mesma versão exata (peer deps travadas)
 
 ## PWA
 

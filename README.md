@@ -10,6 +10,7 @@ Aplicação web para registrar e consultar reuniões, com interface moderna e re
 
 - **Reuniões** — listagem com rolagem infinita, ordenação por colunas, filtros por participante e projeto, notas ricas, pautas e links
 - **Auto-save em background** — reunião e notas salvas automaticamente após pausa na edição; intervalo configurável em Manutenção → Configurações (padrão: 5 s)
+- **Importar Markdown nas Notas** — botão na toolbar do editor (Reuniões, Participantes, Projetos) insere um `.md`/`.markdown` (até 1 MB) no cursor; suporta CommonMark + GFM (tabelas, task lists, riscado, autolinks); HTML embutido é descartado
 - **Participantes** — cadastro com instituição, cargo, lotação, e-mail, status ativo/inativo, notas; nomes clicáveis na lista de reuniões abrem a ficha
 - **Projetos** — vínculo com instituições e participantes, links, notas, status ativo/inativo; nomes clicáveis na lista de reuniões abrem a ficha
 - **Instituições** — cadastro de sigla e nome
@@ -32,7 +33,7 @@ Aplicação web para registrar e consultar reuniões, com interface moderna e re
 | HTTP | [chi v5](https://github.com/go-chi/chi) |
 | Banco de dados | SQLite via [`modernc.org/sqlite`](https://gitlab.com/cznic/sqlite) (puro Go, WAL mode) |
 | Frontend | [Svelte 5](https://svelte.dev) + [Vite](https://vitejs.dev) + [Tailwind CSS](https://tailwindcss.com) |
-| Editor de texto | [TipTap](https://tiptap.dev) (baseado em ProseMirror) |
+| Editor de texto | [TipTap](https://tiptap.dev) (baseado em ProseMirror) + `@tiptap/markdown` (importação) + tabelas/task lists |
 | Gráficos | [Chart.js](https://www.chartjs.org) |
 | Thumbnails | `golang.org/x/image/draw` (CatmullRom) — sem CGO, sem sharp |
 | Docker | 3 estágios: `node:22-alpine` → `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |

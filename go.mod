@@ -3,7 +3,7 @@ module github.com/edalcin/meetinglog
 go 1.25.0
 
 require (
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/microcosm-cc/bluemonday v1.0.27
 	golang.org/x/image v0.43.0
 	modernc.org/sqlite v1.48.2

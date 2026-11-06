@@ -5,13 +5,15 @@
 ## Estado atual
 
 - Produção: UNRAID puxa `ghcr.io/edalcin/meetinglog:latest`. Todo push no `main` publica `latest` + `sha-*` (`build-and-publish.yml`). Não há etapa de promoção (o antigo `promote-to-prod.yml` dependia da tag `:edge`, que não existia mais, e foi removido).
-- **Chat** implementado (PRD #7, [ADR-002](adr/002-chat-acervo-no-contexto.md)): aba Chat, `POST /api/chat` com SSE, acervo inteiro no contexto do Gemini, modelo escolhido em Manutenção → Configurações.
+- **Chat** implementado e publicado (PRD #7 fechado, [ADR-002](adr/002-chat-acervo-no-contexto.md)), commit `e639eb9`: aba Chat, `POST /api/chat` com SSE, acervo inteiro no contexto do Gemini (gerado a cada pergunta, ~16 ms), modelo escolhido em Manutenção → Configurações.
+- Verificado: testes Go (Gemini simulado), container local (chamada real ao Gemini com chave inválida → erro exibido; stream simulado → Markdown, escape de HTML, citação abre a ficha). **Não verificado:** conversa com chave real; seletor de modelo na tela de Manutenção (só a API foi testada).
 
 ## Para ativar o Chat em produção
 
 1. Criar a chave Gemini no **tier pago** (o free tier usa os dados para treino).
 2. No UNRAID, adicionar a variável `GEMINI_API_KEY` ao container (ver [unraid-install.md](unraid-install.md)) e atualizar a imagem.
-3. Fazer algumas perguntas reais e conferir: latência até o primeiro token (~100k tokens de entrada; não medida), acerto do cache implícito (custo no painel do AI Studio) e precisão em contagens.
+3. Testar antes no Docker local: chave no `.env` (gitignored), `docker build` + `docker run` com `GEMINI_API_KEY`.
+4. Fazer algumas perguntas reais e conferir: latência até o primeiro token (~100k tokens de entrada; não medida), acerto do cache implícito (custo no painel do AI Studio), precisão em contagens e o seletor de modelo em Manutenção.
 
 ## Pendências e ideias
 
@@ -19,3 +21,4 @@
 - Se o cache implícito não acertar: usar cache explícito (`cachedContents`).
 - A interface não tem tema escuro (regra global pede alternância claro/escuro). Nenhuma aba usa `dark:` hoje.
 - Conteúdo de Anexos (PDF/imagem) fica fora do Chat; só o nome do arquivo entra.
+- Warnings a11y pré-existentes no build do Svelte (`label` sem controle em MaintenanceTab/ReplaceEntitySection).

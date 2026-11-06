@@ -4,7 +4,7 @@ Last updated: 2026-06-20
 
 ## Project Overview
 
-Aplicação web para registro e consulta de reuniões. Binário único Go (chi) servindo REST API + frontend Svelte 5 embutido via `go:embed`, banco de dados SQLite (modernc.org/sqlite — puro Go, sem CGO). Implantado no UNRAID via Docker distroless (~20 MB).
+Aplicação web para registro e consulta de reuniões. Binário único Go (chi) servindo REST API + frontend Svelte 5 embutido via `go:embed`, banco de dados SQLite (modernc.org/sqlite — puro Go, sem CGO). Chat opcional via API Gemini. Implantado no UNRAID via Docker distroless (~25 MB). Status: `docs/proximosPassos.md`.
 
 ## Stack Atual
 
@@ -87,7 +87,7 @@ go test ./internal/store/...   # testes do store (settings + ReplaceParticipant)
 go build -o meetinglog ./cmd/meetinglog  # binário final
 
 # Docker
-docker build .          # imagem distroless ~20MB
+docker build .          # imagem distroless ~25MB
 docker-compose up
 
 # Desenvolvimento local (requer frontend já buildado)

@@ -4,7 +4,7 @@
   <img src="meeting.png" alt="Registro de Reuniões" width="120">
 </p>
 
-Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva. Roda em um único container Docker (~20 MB) com banco de dados SQLite embutido — sem dependências externas.
+Aplicação web para registrar e consultar reuniões, com interface moderna e responsiva. Roda em um único container Docker (~25 MB) com banco de dados SQLite embutido. O **Chat** (opcional) usa a API Gemini.
 
 ## Funcionalidades
 
@@ -36,9 +36,10 @@ Aplicação web para registrar e consultar reuniões, com interface moderna e re
 | Frontend | [Svelte 5](https://svelte.dev) + [Vite](https://vitejs.dev) + [Tailwind CSS](https://tailwindcss.com) |
 | Editor de texto | [TipTap](https://tiptap.dev) (baseado em ProseMirror) + `@tiptap/markdown` (importação) + tabelas/task lists |
 | Gráficos | [Chart.js](https://www.chartjs.org) |
+| Chat | API Gemini via HTTP direto (SSE), sem SDK; respostas renderizadas com [marked](https://marked.js.org) + escape de HTML |
 | Thumbnails | `golang.org/x/image/draw` (CatmullRom) — sem CGO, sem sharp |
 | Docker | 3 estágios: `node:22-alpine` → `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
-| Imagem final | ~20 MB, usuário não-root (UID 65532) |
+| Imagem final | ~25 MB, usuário não-root (UID 65532) |
 
 ## Quick Start com Docker
 
@@ -105,6 +106,10 @@ APP_PIN=1234 DB_PATH=./data/meetinglog.sqlite FILES_PATH=./data/uploads \
 docker build .
 docker-compose up
 ```
+
+## Deploy
+
+Todo push no `main` publica `ghcr.io/edalcin/meetinglog:latest` e `:sha-<commit>` (GitHub Actions). Produção (UNRAID) usa `:latest`.
 
 ## Backup e Restauração
 

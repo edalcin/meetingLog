@@ -16,11 +16,12 @@ Aplicação web para registrar e consultar reuniões, com interface moderna e re
 - **Instituições** — cadastro de sigla e nome
 - **Arquivos** — upload de imagens (PNG/JPEG) e PDFs por reunião; ícones distintos (PDF vermelho, imagem azul) com contagem na lista de reuniões; visualização em modal
 - **Dashboard** — gráficos de reuniões por mês, top participantes, top projetos, horários e dias da semana, filtros por ano/projeto/participante
+- **Chat** — perguntas em linguagem natural sobre Reuniões, Participantes, Projetos e Instituições (só consulta); resposta em streaming com citações `[Reunião #id]` clicáveis e botão Copiar; usa Gemini (exige `GEMINI_API_KEY`). Arquitetura: [ADR-002](docs/adr/002-chat-acervo-no-contexto.md)
 - **Links compartilháveis** — URLs públicas read-only por reunião ou filtro
 - **Manutenção**
   - Substituição de projetos em reuniões (com dry-run)
   - Substituição de participantes em reuniões (com dry-run)
-  - Configurações: intervalo de auto-save (2–300 s)
+  - Configurações: intervalo de auto-save (2–300 s) e modelo do Chat
   - Backup e restauração do banco de dados
 - **Autenticação via PIN** — sessão server-side, throttle de 5 tentativas, lockout de 30 min
 - **PWA** — instalável em dispositivos móveis; app shell disponível offline
@@ -68,10 +69,11 @@ Acesse: `http://localhost:3000`
 | `ML_MAX_FILE_MB` | Não | `10` | Limite por upload em MB |
 | `ML_MAX_RESTORE_MB` | Não | `512` | Limite para restauração de backup em MB |
 | `ML_TRUST_PROXY_HEADERS` | Não | — | Confiar em `X-Forwarded-For` (reverse proxy) |
+| `GEMINI_API_KEY` | Não | — | Chave da API Gemini (tier pago). Sem ela, a aba Chat fica desabilitada |
 
 ## Configurações (interface)
 
-Em **Manutenção → Configurações** é possível ajustar o intervalo de auto-save (2–300 segundos). O valor é armazenado na tabela `settings` do SQLite — não é uma variável de ambiente.
+Em **Manutenção → Configurações** é possível ajustar o intervalo de auto-save (2–300 segundos) e o modelo do Chat (`gemini-3.8-flash`, padrão; `gemini-3.5-flash-lite`; `gemini-3.1-pro-preview`). Os valores ficam na tabela `settings` do SQLite — não são variáveis de ambiente.
 
 ## Desenvolvimento
 
@@ -92,7 +94,7 @@ npm run dev            # servidor Vite com HMR (frontend isolado)
 # Backend (Go)
 go build ./...         # compila todos os pacotes
 go vet ./...           # verificação estática
-go test ./internal/store/...  # testes unitários do store
+go test ./internal/...  # testes do store e do handler do Chat (Gemini simulado com httptest)
 go build -o meetinglog ./cmd/meetinglog  # binário final
 
 # Executar localmente (requer frontend buildado primeiro)
@@ -121,5 +123,6 @@ Consulte [docs/unraid-install.md](docs/unraid-install.md) para instruções deta
 - CSRF double-submit: cookie `meetinglog_csrf` + header `X-CSRF-Token`
 - Throttle de login: 5 falhas → lockout de 30 min por IP
 - Uploads sanitizados: apenas PNG, JPEG e PDF aceitos; PDFs servidos com `X-Frame-Options: SAMEORIGIN`
+- Chat: só leitura, só com sessão autenticada (nunca nos links públicos); a chave Gemini fica no servidor (o browser fala só com `/api/chat`); histórico validado e cortado no servidor
 - Container distroless, usuário não-root (UID 65532)
 - SQL 100% parametrizado — sem interpolação de strings

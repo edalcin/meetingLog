@@ -4,10 +4,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 )
 
-const SettingAutosaveIntervalSeconds = "autosave_interval_seconds"
+const (
+	SettingAutosaveIntervalSeconds = "autosave_interval_seconds"
+	SettingChatModel               = "chat_model"
+)
+
+// ChatModels is the allowlist of Gemini models the Chat may use; first = default.
+var ChatModels = []string{"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"}
 
 const (
 	DefaultAutosaveIntervalSeconds = 5
@@ -55,4 +62,14 @@ func GetAutosaveIntervalSeconds(db *sql.DB) (int, error) {
 		return DefaultAutosaveIntervalSeconds, nil
 	}
 	return n, nil
+}
+
+// GetChatModel returns the configured Chat model, or the default when unset
+// or no longer in ChatModels.
+func GetChatModel(db *sql.DB) (string, error) {
+	v, _, err := GetSetting(db, SettingChatModel)
+	if err != nil || !slices.Contains(ChatModels, v) {
+		return ChatModels[0], err
+	}
+	return v, nil
 }

@@ -27,6 +27,9 @@ type Config struct {
 	// BaseURL is the public-facing base URL for generating shareable links.
 	// e.g. "https://reunioes.dalc.in/". If empty, derived from request Host.
 	BaseURL string
+
+	// GeminiAPIKey enables the Chat. Empty = Chat disabled.
+	GeminiAPIKey string
 }
 
 // Load reads configuration from environment variables and returns an error if
@@ -58,6 +61,7 @@ func Load() (*Config, error) {
 		SessionIdleMinutes: 43200, // 30 days
 		MaxFileMB:          10,
 		MaxRestoreMB:       512,
+		GeminiAPIKey:       os.Getenv("GEMINI_API_KEY"),
 	}
 
 	if v := os.Getenv("APP_PORT"); v != "" {

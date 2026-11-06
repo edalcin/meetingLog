@@ -264,5 +264,8 @@ type MaintenanceMeeting struct {
 
 // Settings holds application-level configuration.
 type Settings struct {
-	AutosaveIntervalSeconds int `json:"autosave_interval_seconds"`
+	AutosaveIntervalSeconds int      `json:"autosave_interval_seconds"`
+	ChatModel               string   `json:"chat_model"`
+	ChatModels              []string `json:"chat_models"`
+	ChatEnabled             bool     `json:"chat_enabled"`
 }

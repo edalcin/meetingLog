@@ -28,7 +28,8 @@ internal/
     schema.sql                  # Schema SQLite idempotente (IF NOT EXISTS), embutido via go:embed
                                 #   Inclui tabela settings (key TEXT PK, value TEXT NOT NULL)
     quilldelta.go               # Conversor Quill Delta JSON → HTML (backfill único no startup)
-    settings.go                 # GetSetting, SetSetting, GetAutosaveIntervalSeconds + constantes
+    settings.go                 # GetSetting, SetSetting, GetAutosaveIntervalSeconds, GetChatModel + constantes
+    chat.go                     # BuildAcervo: todos os registros em Markdown compacto para o Chat
     meetings.go participants.go projects.go institutions.go
     dashboard.go files.go sharelinks.go backup.go
     errors.go tx.go
@@ -37,7 +38,7 @@ internal/
     assets.go                   # //go:embed all:web/dist
     respond.go                  # writeJSON, parseID, handleStoreErr
     handlers_{auth,health,meetings,participants,projects,institutions,
-              dashboard,files,maintenance,sharelinks,public,settings}.go
+              dashboard,files,maintenance,sharelinks,public,settings,chat}.go
     middleware_{security,auth,csrf,throttle}.go
     web/dist/                   # Output do Vite (gerado em build, embutido no binário)
   security/                     # password, tokens, csrf, sanitize, paths
@@ -58,6 +59,7 @@ frontend/                       # Svelte 5 + Vite (npm run build → internal/se
       ProjectsTab.svelte           # Usa ProjectInfoModal
       ProjectInfoModal.svelte      # Ficha reutilizável (MeetingsTab + ProjectsTab)
       InstitutionsTab.svelte
+      ChatTab.svelte               # Chat: SSE via chatStream (api.js), histórico em sessionStorage, citações → MeetingInfoModal
       DashboardTab.svelte
       MaintenanceTab.svelte        # Compõe ReplaceEntitySection × 2 + Configurações
       ReplaceEntitySection.svelte  # Substituição genérica de entidade (projetos ou participantes)
@@ -68,7 +70,7 @@ frontend/                       # Svelte 5 + Vite (npm run build → internal/se
     sw.js                         # Service worker: network-first nav + SWR assets
     favicon.ico favicon-*.png
     icons/                        # icon-192.png, icon-512.png, icon.svg, apple-touch-icon.png
-.github/workflows/              # CI: build-and-publish, promote-to-prod, ghcr-cleanup
+.github/workflows/              # CI: build-and-publish (push main → :latest = prod), ghcr-cleanup
 ```
 
 ## Comandos
@@ -143,11 +145,10 @@ Executado automaticamente em `store.Open` na primeira inicialização. Converte 
 
 ## Auto-save (MeetingFormModal)
 
-- Intervalo configurável via `GET/PUT /api/settings` (`autosave_interval_seconds`, padrão 5 s, range 2–300 s)
-- Auto-save unificado: faz `POST /api/meetings` na criação (quando data+hora + ≥1 participante) e `PUT /api/meetings/{id}` nas edições
+- Intervalo configurável via `GET/PUT /api/settings` (`autosave_interval_seconds`, padrão 5 s, range 2–300 s; o PUT aceita qualquer subconjunto dos campos)
+- Auto-save: faz `POST /api/meetings` na criação (quando data+hora + ≥1 participante); em Reunião existente faz só `PATCH /api/meetings/{id}/notas` (nunca altera Participantes/Projetos)
 - Não inclui upload de arquivos — apenas o payload JSON da reunião
 - `handleClose()` faz flush antes de fechar o modal
-- Endpoint `PATCH /api/meetings/{id}/notas` removido (sem consumidores)
 
 ## Importar Markdown (RichEditor)
 
@@ -155,6 +156,15 @@ Executado automaticamente em `store.Open` na primeira inicialização. Converte 
 - Notas continuam armazenadas como **HTML**; Markdown é só formato de entrada. Auto-save/PUT existentes persistem o resultado
 - Segurança: renderização sempre passa pelo schema do TipTap (HTML cru do `.md` é descartado). O servidor não sanitiza Notas (bluemonday só no backfill Delta→HTML); Notas não aparecem no link público
 - Pacotes `@tiptap/*` devem ter a mesma versão exata (peer deps travadas)
+
+## Chat (ADR-002)
+
+- `POST /api/chat` (autenticado + CSRF): `{pergunta, historico}` → SSE (`data: {"text"}`, `event: error`, `event: done`). 503 sem `GEMINI_API_KEY`
+- A cada pergunta: `store.BuildAcervo` (~16 ms) → `systemInstruction = chatRules + acervo` (prefixo estável → cache implícito do Gemini); data de hoje vai na última mensagem
+- Histórico do cliente é não confiável: só `user`/`model`, últimas 10 mensagens, ≤4.000 caracteres cada (`chatHistory`)
+- Modelo: `settings.chat_model`, allowlist `store.ChatModels` (1º = padrão); editável em Manutenção
+- Testes: `handlers_chat_test.go` com `httptest.Server` no lugar do Gemini (`Server.geminiBase`)
+- Frontend renderiza a resposta com `marked` + renderer que escapa HTML (saída do modelo é não confiável)
 
 ## PWA
 
@@ -183,6 +193,7 @@ Chave atual: `autosave_interval_seconds`. Lida/escrita via `store.GetSetting` / 
 | `ML_MAX_FILE_MB` | `10` | Limite de upload |
 | `ML_MAX_RESTORE_MB` | `512` | Limite de restore |
 | `ML_TRUST_PROXY_HEADERS` | — | Confiar em X-Forwarded-For |
+| `GEMINI_API_KEY` | — | Habilita o Chat (tier pago) |
 
 ## Autenticação
 

@@ -21,11 +21,11 @@ Alternativas rejeitadas: text-to-SQL (fraco em conteúdo das Notas; exige guarda
 
 Um bloco por Reunião: id, data/hora, tipo, Projetos, Participantes, Instituições, Pautas, Links, nomes de Anexos, Notas (HTML → texto). Depois as fichas de Participante, Projeto e Instituição. Itens inativos levam o marcador `(inativo)`. Conteúdo de Anexos fica fora.
 
-### 3. Cache por prefixo estável + fingerprint
+### 3. Cache por prefixo estável, acervo gerado a cada pergunta
 
-O acervo é o prefixo do prompt, idêntico entre perguntas, para aproveitar o cache implícito do Gemini (mínimo 4.096 tokens, leitura a 10%). O servidor guarda o acervo serializado em memória e o regenera só quando o fingerprint muda (`MAX(updated_at)` + contagens, calculado a cada pergunta). Cache explícito (`cachedContents`, TTL ~1 h) só se o implícito não acertar na prática.
+O prompt de sistema é `regras fixas + acervo`, idêntico entre perguntas enquanto os dados não mudam, para aproveitar o cache implícito do Gemini (mínimo 4.096 tokens, leitura a 10%). A data de hoje vai na última mensagem do usuário, não no prefixo. Cache explícito (`cachedContents`) só se o implícito não acertar na prática.
 
-Alternativa rejeitada: invalidar na escrita (auto-save a cada 5 s recriaria demais).
+Revisão na implementação: o fingerprint (`MAX(updated_at)` + contagens) foi descartado. Gerar o acervo leva ~16 ms (626 Reuniões, ~340 KB), então o servidor o gera a cada pergunta, sem cópia em memória. Isso evita acervo velho: `atualizado_em` só muda com edições da Reunião, não de Participantes, Projetos, Pautas ou Links.
 
 ### 4. Provedor e configuração
 
@@ -45,7 +45,7 @@ Aba nova "Chat". Streaming SSE sobre `POST`; texto parcial como texto simples, c
 
 ### 8. Testes
 
-`httptest.Server` imitando a API do Gemini (sem interface com uma implementação). Testes no `store` para serialização e fingerprint; testes do handler para stream SSE, 401 sem sessão e validação do histórico.
+`httptest.Server` imitando a API do Gemini (sem interface com uma implementação). Teste no `store` para a serialização; testes do handler para stream SSE, histórico cortado, entrada inválida, 401 sem sessão e 503 sem chave.
 
 ## Diagrama
 
@@ -56,11 +56,8 @@ sequenceDiagram
     participant D as SQLite
     participant G as Gemini API
     B->>S: POST /api/chat {pergunta, histórico ≤5}
-    S->>D: fingerprint (MAX updated_at + contagens)
-    alt fingerprint mudou
-        S->>D: ler acervo
-        S->>S: serializar Markdown (memória)
-    end
+    S->>D: ler acervo (~16 ms)
+    S->>S: serializar Markdown
     S->>G: streamGenerateContent (prompt fixo + acervo + histórico + pergunta)
     G-->>S: chunks
     S-->>B: SSE chunks

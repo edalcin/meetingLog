@@ -22,18 +22,21 @@ type Server struct {
 	storage  *storage.LocalBackend
 	throttle *Throttle
 	handler  http.Handler
-	mu       sync.RWMutex
+	// geminiBase is the Gemini API root; tests point it at httptest.Server.
+	geminiBase string
+	mu         sync.RWMutex
 }
 
 // New builds the chi router with all middleware and routes.
 func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 	local := storage.NewLocal(cfg.AttachmentsPath)
 	s := &Server{
-		cfg:      cfg,
-		db:       db,
-		sessions: sess,
-		storage:  local,
-		throttle: NewThrottle(cfg.TrustProxyHeaders),
+		cfg:        cfg,
+		db:         db,
+		sessions:   sess,
+		storage:    local,
+		throttle:   NewThrottle(cfg.TrustProxyHeaders),
+		geminiBase: geminiBaseURL,
 	}
 	s.handler = s.buildRouter()
 	return s
@@ -156,6 +159,9 @@ func (s *Server) buildRouter() http.Handler {
 		// Settings
 		r.Get("/api/settings", s.handleGetSettings())
 		r.Put("/api/settings", s.handleUpdateSettings())
+
+		// Chat (read-only; never under /api/p/{token})
+		r.Post("/api/chat", s.handleChat())
 	})
 
 	return r

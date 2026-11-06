@@ -37,6 +37,7 @@ Não é necessário MariaDB nem nenhum serviço externo — o banco de dados SQL
 | `APP_PIN` | `seu-pin` | PIN de acesso à aplicação |
 | `DB_PATH` | `/data/db/meetinglog.sqlite` | Caminho do SQLite dentro do container |
 | `FILES_PATH` | `/app/data/uploads` | Diretório de uploads dentro do container |
+| `GEMINI_API_KEY` | *(sua chave, tier pago)* | Opcional. Habilita a aba **Chat**. Para criar: *Add another Path, Port, Variable…* → Config Type **Variable**; marque como *Mask* para esconder o valor |
 
 ### Mapeamento de Volumes
 

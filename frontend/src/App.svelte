@@ -7,6 +7,7 @@
   import ProjectsTab from './lib/components/ProjectsTab.svelte'
   import InstitutionsTab from './lib/components/InstitutionsTab.svelte'
   import DashboardTab from './lib/components/DashboardTab.svelte'
+  import ChatTab from './lib/components/ChatTab.svelte'
   import MaintenanceTab from './lib/components/MaintenanceTab.svelte'
   import SharedView from './lib/components/SharedView.svelte'
   import MeetingView from './lib/components/MeetingView.svelte'
@@ -48,7 +49,7 @@
           <span class="font-semibold text-gray-900 text-lg">Registro de Reuniões</span>
         </div>
         <nav class="flex items-center gap-1 overflow-x-auto">
-          {#each [['meetings','Reuniões'],['participants','Participantes'],['projects','Projetos'],['institutions','Instituições'],['dashboard','Dashboard'],['maintenance','Manutenção']] as [tab, label]}
+          {#each [['meetings','Reuniões'],['participants','Participantes'],['projects','Projetos'],['institutions','Instituições'],['dashboard','Dashboard'],['chat','Chat'],['maintenance','Manutenção']] as [tab, label]}
             <button
               onclick={() => activeTab = tab}
               class="px-3 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap {activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}">
@@ -73,6 +74,8 @@
       <InstitutionsTab />
     {:else if activeTab === 'dashboard'}
       <DashboardTab />
+    {:else if activeTab === 'chat'}
+      <ChatTab />
     {:else if activeTab === 'maintenance'}
       <MaintenanceTab />
     {/if}

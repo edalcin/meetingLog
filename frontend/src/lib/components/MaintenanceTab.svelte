@@ -57,6 +57,9 @@
   // ── Section: Configurações ────────────────────────────────────────────────
 
   let autosaveSeconds = $state(5)
+  let chatModel = $state('')
+  let chatModels = $state([])
+  let chatEnabled = $state(true)
   let settingsSaving = $state(false)
   let settingsError = $state('')
   let settingsSuccess = $state('')
@@ -65,6 +68,9 @@
     try {
       const s = await api.get('/api/settings')
       autosaveSeconds = s.autosave_interval_seconds ?? 5
+      chatModel = s.chat_model ?? ''
+      chatModels = s.chat_models ?? []
+      chatEnabled = s.chat_enabled !== false
     } catch {}
   })
 
@@ -73,7 +79,7 @@
     settingsError = ''
     settingsSuccess = ''
     try {
-      await api.put('/api/settings', { autosave_interval_seconds: autosaveSeconds })
+      await api.put('/api/settings', { autosave_interval_seconds: autosaveSeconds, ...(chatModel && { chat_model: chatModel }) })
       settingsSuccess = 'Configurações salvas.'
     } catch (e) {
       settingsError = e.message
@@ -134,6 +140,26 @@
         <p class="text-xs text-gray-500 mt-1">
           Após este tempo sem alterações, a reunião e as notas são salvas automaticamente.
         </p>
+      </div>
+
+      <div>
+        <label for="chat-model" class="block text-sm font-medium text-gray-700 mb-1">
+          Modelo do Chat
+        </label>
+        <select
+          id="chat-model"
+          bind:value={chatModel}
+          class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {#each chatModels as m}
+            <option value={m}>{m}</option>
+          {/each}
+        </select>
+        {#if !chatEnabled}
+          <p class="text-xs text-yellow-700 mt-1">
+            O Chat está desativado: defina GEMINI_API_KEY no servidor.
+          </p>
+        {/if}
       </div>
 
       <button

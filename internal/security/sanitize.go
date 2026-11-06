@@ -1,6 +1,7 @@
 package security
 
 import (
+	"html"
 	"regexp"
 	"strings"
 
@@ -67,4 +68,25 @@ func ExtractPlainText(html string) string {
 	stripped := bluemonday.StrictPolicy().Sanitize(html)
 	parts := strings.Fields(stripped)
 	return strings.Join(parts, " ")
+}
+
+var (
+	reBlockEnd = regexp.MustCompile(`(?i)<br\s*/?>|</(p|div|h[1-6]|li|tr|blockquote|pre)>`)
+	reListItem = regexp.MustCompile(`(?i)<li[^>]*>`)
+	reCell     = regexp.MustCompile(`(?i)</t[dh]>`)
+	reBlankRun = regexp.MustCompile(`\n\s*\n+`)
+)
+
+// HTMLToText converts editor HTML to compact plain text, keeping one line per
+// block (paragraph, list item, table row) so the structure stays readable.
+func HTMLToText(s string) string {
+	s = reListItem.ReplaceAllString(s, "- ")
+	s = reCell.ReplaceAllString(s, " | ")
+	s = reBlockEnd.ReplaceAllString(s, "\n")
+	s = html.UnescapeString(bluemonday.StrictPolicy().Sanitize(s))
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = strings.Join(strings.Fields(l), " ")
+	}
+	return strings.TrimSpace(reBlankRun.ReplaceAllString(strings.Join(lines, "\n"), "\n"))
 }

@@ -6,14 +6,13 @@
 
 - Produção: UNRAID puxa `ghcr.io/edalcin/meetinglog:latest`. Todo push no `main` publica `latest` + `sha-*` (`build-and-publish.yml`). Não há etapa de promoção (o antigo `promote-to-prod.yml` dependia da tag `:edge`, que não existia mais, e foi removido).
 - **Chat** implementado e publicado (PRD #7 fechado, [ADR-002](adr/002-chat-acervo-no-contexto.md)), commit `e639eb9`: aba Chat, `POST /api/chat` com SSE, acervo inteiro no contexto do Gemini (gerado a cada pergunta, ~16 ms), modelo escolhido em Manutenção → Configurações.
-- Verificado: testes Go (Gemini simulado), container local (chamada real ao Gemini com chave inválida → erro exibido; stream simulado → Markdown, escape de HTML, citação abre a ficha). **Não verificado:** conversa com chave real; seletor de modelo na tela de Manutenção (só a API foi testada).
+- **Chat em produção** desde 2026-11-06, com chave real (tier pago), confirmado pelo usuário.
 
-## Para ativar o Chat em produção
+## Acompanhar no Chat
 
-1. Criar a chave Gemini no **tier pago** (o free tier usa os dados para treino).
-2. No UNRAID, adicionar a variável `GEMINI_API_KEY` ao container (ver [unraid-install.md](unraid-install.md)) e atualizar a imagem.
-3. Testar antes no Docker local: chave no `.env` (gitignored), `docker build` + `docker run` com `GEMINI_API_KEY`.
-4. Fazer algumas perguntas reais e conferir: latência até o primeiro token (~100k tokens de entrada; não medida), acerto do cache implícito (custo no painel do AI Studio), precisão em contagens e o seletor de modelo em Manutenção.
+- Latência até o primeiro token (~100k tokens de entrada).
+- Acerto do cache implícito (custo no painel do AI Studio).
+- Precisão em contagens.
 
 ## Pendências e ideias
 

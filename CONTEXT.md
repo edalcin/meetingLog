@@ -15,3 +15,7 @@ _Avoid_: upload, documento
 **Importar Markdown**:
 Ação de converter o conteúdo de um arquivo Markdown e inseri-lo nas Notas; o arquivo não vira Anexo.
 _Avoid_: upload de Markdown, anexar Markdown
+
+**Chat**:
+Conversa em linguagem natural sobre as Reuniões, Participantes, Projetos e Instituições registrados; só consulta, nunca altera dados.
+_Avoid_: assistente, IA
